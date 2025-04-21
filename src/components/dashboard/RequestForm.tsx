@@ -1,0 +1,142 @@
+
+import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { departments } from "@/data/departments";
+
+interface RequestFormProps {
+  onSuccess?: () => void;
+}
+
+const RequestForm = ({ onSuccess }: RequestFormProps) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    department: "",
+  });
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleDepartmentChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, department: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Get existing requests or initialize an empty array
+      const existingRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
+      
+      // Create new request
+      const newRequest = {
+        id: `#${Math.floor(100000 + Math.random() * 900000)}`,
+        title: formData.title,
+        department: formData.department,
+        status: "Pending",
+        dateCreated: new Date().toLocaleDateString("en-GB"),
+        creator: user?.username || "user",
+        description: formData.description,
+      };
+      
+      // Add the new request to the array
+      const updatedRequests = [newRequest, ...existingRequests];
+      
+      // Save back to localStorage
+      localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+
+      toast({
+        title: "Request submitted",
+        description: "Your request has been successfully submitted.",
+      });
+
+      if (onSuccess) onSuccess();
+    } catch (error) {
+      toast({
+        title: "Submission failed",
+        description: "Could not submit your request. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="title">Request Title</Label>
+        <Input
+          id="title"
+          name="title"
+          value={formData.title}
+          onChange={handleChange}
+          placeholder="Enter a brief title for your request"
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="department">Department</Label>
+        <Select
+          value={formData.department}
+          onValueChange={handleDepartmentChange}
+          required
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select department" />
+          </SelectTrigger>
+          <SelectContent>
+            {departments.map((dept) => (
+              <SelectItem key={dept.id} value={dept.name}>
+                {dept.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="description">Description</Label>
+        <Textarea
+          id="description"
+          name="description"
+          value={formData.description}
+          onChange={handleChange}
+          placeholder="Provide details about your request"
+          rows={4}
+          required
+        />
+      </div>
+
+      <Button type="submit" className="w-full bg-jd-purple hover:bg-jd-darkPurple" disabled={isSubmitting}>
+        {isSubmitting ? "Submitting..." : "Submit Request"}
+      </Button>
+    </form>
+  );
+};
+
+export default RequestForm;

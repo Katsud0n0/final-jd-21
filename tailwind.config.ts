@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,31 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// JD Frameworks specific colors
+				jd: {
+					bg: "#131823",
+					purple: "#9b87f5",
+					darkPurple: "#7E69AB",
+					card: "#1A1F2C",
+					text: "#FFFFFF",
+					mutedText: "#8E9196",
+					red: "#ea384c",
+					green: "#4ade80",
+					blue: "#3b82f6",
+					orange: "#f97316"
+				},
+				department: {
+					water: "#3b82f6",
+					electricity: "#f59e0b",
+					health: "#ef4444", 
+					education: "#4ade80",
+					sanitation: "#9b87f5",
+					"public-works": "#94a3b8",
+					transportation: "#f97316",
+					"urban-development": "#6366f1",
+					environment: "#10b981", 
+					finance: "#0ea5e9"
 				}
 			},
 			borderRadius: {
