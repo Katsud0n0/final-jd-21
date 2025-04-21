@@ -1,8 +1,19 @@
 
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Landing = () => {
+  const { isAuthenticated, user, logout } = useAuth();
+  
   const features = [
     {
       icon: "🎯",
@@ -45,16 +56,59 @@ const Landing = () => {
           <span className="text-2xl font-medium text-jd-purple ml-2">Frameworks</span>
         </div>
         <div className="space-x-4">
-          <Link to="/login">
-            <Button variant="outline" className="border-jd-purple text-jd-purple hover:bg-jd-purple/10">
-              Log in
-            </Button>
-          </Link>
-          <Link to="/register">
-            <Button className="bg-jd-purple hover:bg-jd-darkPurple">
-              Register
-            </Button>
-          </Link>
+          {isAuthenticated ? (
+            <div className="flex items-center gap-4">
+              <Link to="/dashboard">
+                <Button variant="outline" className="border-jd-purple text-jd-purple hover:bg-jd-purple/10">
+                  Dashboard
+                </Button>
+              </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="bg-transparent border-none hover:bg-white/10 flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-full bg-jd-purple flex items-center justify-center text-white">
+                      {user?.fullName?.charAt(0).toUpperCase() || "U"}
+                    </div>
+                    <span className="hidden md:inline-block">{user?.fullName || "User"}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 bg-jd-card border-jd-card">
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="font-medium">{user?.fullName}</div>
+                    <div className="text-xs text-jd-mutedText">{user?.email}</div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <Link to="/profile">
+                    <DropdownMenuItem className="hover:bg-jd-card/60 cursor-pointer">
+                      Profile
+                    </DropdownMenuItem>
+                  </Link>
+                  <Link to="/settings">
+                    <DropdownMenuItem className="hover:bg-jd-card/60 cursor-pointer">
+                      Settings
+                    </DropdownMenuItem>
+                  </Link>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="hover:bg-jd-card/60 cursor-pointer text-jd-red" onClick={logout}>
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          ) : (
+            <>
+              <Link to="/login">
+                <Button variant="outline" className="border-jd-purple text-jd-purple hover:bg-jd-purple/10">
+                  Log in
+                </Button>
+              </Link>
+              <Link to="/register">
+                <Button className="bg-jd-purple hover:bg-jd-darkPurple">
+                  Register
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
       </header>
 
@@ -67,11 +121,19 @@ const Landing = () => {
           A unified platform for interdepartmental cooperation and streamlined communication.
         </p>
         <div className="flex flex-col sm:flex-row gap-4">
-          <Link to="/dashboard">
-            <Button className="bg-jd-purple hover:bg-jd-darkPurple text-lg py-6 px-8">
-              Go to Dashboard
-            </Button>
-          </Link>
+          {isAuthenticated ? (
+            <Link to="/dashboard">
+              <Button className="bg-jd-purple hover:bg-jd-darkPurple text-lg py-6 px-8">
+                Go to Dashboard
+              </Button>
+            </Link>
+          ) : (
+            <Link to="/register">
+              <Button className="bg-jd-purple hover:bg-jd-darkPurple text-lg py-6 px-8">
+                Get Started
+              </Button>
+            </Link>
+          )}
           <Link to="/departments">
             <Button variant="outline" className="border-white hover:bg-white/10 text-lg py-6 px-8">
               Explore Departments →

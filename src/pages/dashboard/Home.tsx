@@ -23,6 +23,13 @@ const Home = () => {
     "#0ea5e9", // Finance - sky
   ];
 
+  // Common tooltip style with white text
+  const tooltipStyle = {
+    backgroundColor: '#1A1F2C', 
+    borderColor: '#374151', 
+    color: '#E5E7EB'
+  };
+
   // Generate department interaction chart data
   const interactionChartData = Object.entries(departmentInteractionData).map(([dept, interactions]) => {
     return {
@@ -108,8 +115,9 @@ const Home = () => {
                 <XAxis dataKey="month" stroke="#9CA3AF" />
                 <YAxis stroke="#9CA3AF" />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#1A1F2C', borderColor: '#374151', color: '#E5E7EB' }}
+                  contentStyle={tooltipStyle}
                   labelStyle={{ color: '#E5E7EB' }}
+                  itemStyle={{ color: '#E5E7EB' }}
                 />
                 <Legend />
                 <Line
@@ -139,8 +147,9 @@ const Home = () => {
                 <XAxis dataKey="department" stroke="#9CA3AF" />
                 <YAxis stroke="#9CA3AF" />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#1A1F2C', borderColor: '#374151', color: '#E5E7EB' }}
+                  contentStyle={tooltipStyle}
                   labelStyle={{ color: '#E5E7EB' }}
+                  itemStyle={{ color: '#E5E7EB' }}
                 />
                 <Legend />
                 <Bar dataKey="successRate" name="Success Rate (%)">
@@ -178,8 +187,9 @@ const Home = () => {
                   tick={{ fontSize: 12 }}
                 />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#1A1F2C', borderColor: '#374151', color: '#E5E7EB' }}
+                  contentStyle={tooltipStyle}
                   labelStyle={{ color: '#E5E7EB' }}
+                  itemStyle={{ color: '#E5E7EB' }}
                 />
                 <Legend />
                 <Bar dataKey="collaborationLevel" name="Collaboration Level (%)" fill="#9b87f5" />
@@ -217,8 +227,9 @@ const Home = () => {
                 </Pie>
                 <Tooltip 
                   formatter={(value, name) => [`${value}%`, `Success Rate`]}
-                  contentStyle={{ backgroundColor: '#1A1F2C', borderColor: '#374151', color: '#E5E7EB' }}
+                  contentStyle={tooltipStyle}
                   labelStyle={{ color: '#E5E7EB' }}
+                  itemStyle={{ color: '#E5E7EB' }}
                 />
                 <Legend />
               </PieChart>

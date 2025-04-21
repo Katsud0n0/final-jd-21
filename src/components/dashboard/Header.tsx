@@ -1,5 +1,5 @@
 
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bell, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useState } from "react";
 import RequestForm from "./RequestForm";
@@ -61,21 +61,6 @@ const Header = ({ title }: HeaderProps) => {
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon" className="bg-transparent border-none hover:bg-jd-card">
-              <Bell className="h-5 w-5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 bg-jd-card border-jd-card">
-            <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <div className="py-2 px-3 text-sm text-center text-jd-mutedText">
-              No new notifications
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
             <Button variant="outline" className="bg-transparent border-none hover:bg-jd-card flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-jd-purple flex items-center justify-center text-white">
                 {user?.fullName?.charAt(0).toUpperCase() || "U"}
@@ -89,12 +74,16 @@ const Header = ({ title }: HeaderProps) => {
               <div className="text-xs text-jd-mutedText">{user?.email}</div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="hover:bg-jd-card/60 cursor-pointer" onClick={() => window.location.href = "/profile"}>
-              Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem className="hover:bg-jd-card/60 cursor-pointer" onClick={() => window.location.href = "/settings"}>
-              Settings
-            </DropdownMenuItem>
+            <Link to="/profile">
+              <DropdownMenuItem className="hover:bg-jd-card/60 cursor-pointer">
+                Profile
+              </DropdownMenuItem>
+            </Link>
+            <Link to="/settings">
+              <DropdownMenuItem className="hover:bg-jd-card/60 cursor-pointer">
+                Settings
+              </DropdownMenuItem>
+            </Link>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="hover:bg-jd-card/60 cursor-pointer text-jd-red" onClick={logout}>
               Logout

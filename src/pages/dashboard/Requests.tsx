@@ -4,6 +4,7 @@ import { Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Select,
   SelectContent,
@@ -37,6 +38,7 @@ const statusOptions = ["Pending", "In progress", "Completed"];
 
 const Requests = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [requests, setRequests] = useState<Request[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
@@ -44,11 +46,15 @@ const Requests = () => {
 
   useEffect(() => {
     // Load requests from localStorage
+    loadRequests();
+  }, []);
+
+  const loadRequests = () => {
     const storedRequests = localStorage.getItem("jd-requests");
     if (storedRequests) {
       setRequests(JSON.parse(storedRequests));
     }
-  }, []);
+  };
 
   const handleStatusChange = (requestId: string, newStatus: string) => {
     const updatedRequests = requests.map(r => 
@@ -80,6 +86,11 @@ const Requests = () => {
       
       setRequestToDelete(null);
     }
+  };
+
+  // Check if user can delete a specific request
+  const canDeleteRequest = (request: Request) => {
+    return user?.username === request.creator;
   };
 
   // Filter requests based on search term and status filter
@@ -174,6 +185,9 @@ const Requests = () => {
                   DATE CREATED
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-jd-mutedText">
+                  CREATOR
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-jd-mutedText">
                   STATUS
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-jd-mutedText">
@@ -189,6 +203,7 @@ const Requests = () => {
                     <td className="px-4 py-4 text-sm font-medium">{request.title}</td>
                     <td className="px-4 py-4 text-sm">{request.department}</td>
                     <td className="px-4 py-4 text-sm">{request.dateCreated}</td>
+                    <td className="px-4 py-4 text-sm">{request.creator}</td>
                     <td className="px-4 py-4">
                       <Select
                         value={request.status}
@@ -207,41 +222,52 @@ const Requests = () => {
                       </Select>
                     </td>
                     <td className="px-4 py-4">
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-jd-red hover:text-red-600 hover:bg-red-500/10"
-                            onClick={() => handleDelete(request.id)}
-                          >
-                            <Trash2 size={18} />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent className="bg-jd-card border-jd-card">
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Request</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete this request? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel className="bg-jd-bg hover:bg-jd-bg/80">Cancel</AlertDialogCancel>
-                            <AlertDialogAction 
-                              className="bg-red-600 hover:bg-red-700"
-                              onClick={confirmDelete}
+                      {canDeleteRequest(request) ? (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-jd-red hover:text-red-600 hover:bg-red-500/10"
+                              onClick={() => handleDelete(request.id)}
                             >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                              <Trash2 size={18} />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent className="bg-jd-card border-jd-card">
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Request</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete this request? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel className="bg-jd-bg hover:bg-jd-bg/80">Cancel</AlertDialogCancel>
+                              <AlertDialogAction 
+                                className="bg-red-600 hover:bg-red-700"
+                                onClick={confirmDelete}
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-gray-400 cursor-not-allowed"
+                          disabled={true}
+                        >
+                          <Trash2 size={18} />
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-jd-mutedText">
+                  <td colSpan={7} className="px-4 py-8 text-center text-jd-mutedText">
                     No requests found
                   </td>
                 </tr>

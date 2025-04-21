@@ -53,5 +53,59 @@ export const teamMembers = [
     role: "Operations Manager",
     email: "amit.kapoor@jdframework.com",
     phone: "+91 43210 98765"
+  },
+  {
+    id: "vg1",
+    name: "Vikram Gupta",
+    username: "vikram.gupta",
+    department: "Electricity",
+    role: "Technical Director",
+    email: "vikram.gupta@jdframework.com",
+    phone: "+91 87654 12345"
+  },
+  {
+    id: "rm1",
+    name: "Ritu Mehta",
+    username: "ritu.mehta",
+    department: "Environment",
+    role: "Environmental Specialist",
+    email: "ritu.mehta@jdframework.com",
+    phone: "+91 98765 12345"
+  },
+  {
+    id: "as1",
+    name: "Aditya Singh",
+    username: "aditya.singh",
+    department: "Urban Development",
+    role: "Urban Planner",
+    email: "aditya.singh@jdframework.com",
+    phone: "+91 76543 98765"
+  },
+  {
+    id: "kd1",
+    name: "Kavita Desai",
+    username: "kavita.desai",
+    department: "Sanitation",
+    role: "Program Director",
+    email: "kavita.desai@jdframework.com",
+    phone: "+91 65432 87654"
+  },
+  {
+    id: "rj1",
+    name: "Rahul Joshi",
+    username: "rahul.joshi",
+    department: "Water Supply",
+    role: "Infrastructure Engineer",
+    email: "rahul.joshi@jdframework.com",
+    phone: "+91 54321 76543"
+  },
+  {
+    id: "nv1",
+    name: "Neha Verma",
+    username: "neha.verma",
+    department: "Health",
+    role: "Public Health Specialist",
+    email: "neha.verma@jdframework.com",
+    phone: "+91 43210 65432"
   }
 ];

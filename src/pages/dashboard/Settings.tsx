@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
+import { AlertCircle } from "lucide-react";
 
 const Settings = () => {
   const { user } = useAuth();
@@ -28,7 +29,15 @@ const Settings = () => {
 
   const handleProfileUpdate = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate saving
+    // Update user in localStorage
+    const currentUser = JSON.parse(localStorage.getItem("jd-user") || "{}");
+    const updatedUser = {
+      ...currentUser,
+      fullName: formData.fullName,
+      email: formData.email,
+    };
+    localStorage.setItem("jd-user", JSON.stringify(updatedUser));
+    
     toast({
       title: "Profile updated",
       description: "Your profile information has been updated successfully.",
@@ -85,44 +94,24 @@ const Settings = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="username">Username</Label>
-                  <div className="flex items-center">
-                    <Input
-                      id="username"
-                      name="username"
-                      value={formData.username}
-                      onChange={handleChange}
-                      className="flex-1"
-                      readOnly
-                    />
-                    <Button
-                      type="button"
-                      variant="link"
-                      className="ml-2 text-jd-purple"
-                    >
-                      Edit
-                    </Button>
-                  </div>
+                  <Input
+                    id="username"
+                    name="username"
+                    value={formData.username}
+                    className="flex-1"
+                    readOnly
+                  />
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="fullName">Full Name</Label>
-                  <div className="flex items-center">
-                    <Input
-                      id="fullName"
-                      name="fullName"
-                      value={formData.fullName}
-                      onChange={handleChange}
-                      className="flex-1"
-                      readOnly
-                    />
-                    <Button
-                      type="button"
-                      variant="link"
-                      className="ml-2 text-jd-purple"
-                    >
-                      Edit
-                    </Button>
-                  </div>
+                  <Input
+                    id="fullName"
+                    name="fullName"
+                    value={formData.fullName}
+                    onChange={handleChange}
+                    className="flex-1"
+                  />
                 </div>
               </div>
               
@@ -165,29 +154,13 @@ const Settings = () => {
             <h3 className="text-xl font-medium mb-2">Notification Settings</h3>
             <p className="text-jd-mutedText mb-6">Manage how and when you receive notifications.</p>
             
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium">Email Notifications</h4>
-                  <p className="text-sm text-jd-mutedText">Receive updates via email</p>
-                </div>
-                <Button variant="outline">Configure</Button>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium">Push Notifications</h4>
-                  <p className="text-sm text-jd-mutedText">Receive notifications on your device</p>
-                </div>
-                <Button variant="outline">Configure</Button>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium">In-App Notifications</h4>
-                  <p className="text-sm text-jd-mutedText">View notifications in the application</p>
-                </div>
-                <Button variant="outline">Configure</Button>
+            <div className="bg-jd-bg/50 border border-jd-card/50 rounded-lg p-4 flex items-center">
+              <AlertCircle className="text-jd-purple mr-3" size={24} />
+              <div>
+                <h4 className="font-medium">Coming Soon</h4>
+                <p className="text-sm text-jd-mutedText">
+                  Notification settings will be available in a future update. Stay tuned!
+                </p>
               </div>
             </div>
           </div>

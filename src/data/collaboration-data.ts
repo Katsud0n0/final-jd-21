@@ -1,4 +1,10 @@
 
+// This data is currently hard-coded in the frontend
+// To use with SQLite backend, you would need to:
+// 1. Create appropriate tables in SQLite
+// 2. Set up API endpoints to fetch this data
+// 3. Replace the static data with API calls
+
 export const collaborationData = [
   {
     id: 1,

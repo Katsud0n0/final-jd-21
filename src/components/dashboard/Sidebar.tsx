@@ -57,7 +57,7 @@ const Sidebar = () => {
   return (
     <aside className="w-64 min-h-screen bg-jd-bg border-r border-jd-card">
       <div className="flex items-center p-4 border-b border-jd-card">
-        <Link to="/dashboard" className="flex items-center">
+        <Link to="/" className="flex items-center">
           <span className="text-xl font-bold text-white">JD</span>
           <span className="text-xl font-medium ml-2 text-jd-purple">Frameworks</span>
         </Link>

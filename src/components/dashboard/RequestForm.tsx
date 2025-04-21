@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { departments } from "@/data/departments";
+import { useNavigate } from "react-router-dom";
 
 interface RequestFormProps {
   onSuccess?: () => void;
@@ -22,6 +23,7 @@ interface RequestFormProps {
 const RequestForm = ({ onSuccess }: RequestFormProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
@@ -46,7 +48,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
 
     try {
       // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Get existing requests or initialize an empty array
       const existingRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
@@ -73,7 +75,20 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         description: "Your request has been successfully submitted.",
       });
 
-      if (onSuccess) onSuccess();
+      // Reset form
+      setFormData({
+        title: "",
+        description: "",
+        department: "",
+      });
+
+      // If dialog is used, close it via callback
+      if (onSuccess) {
+        onSuccess();
+      }
+      
+      // Navigate to requests page to see the new request
+      navigate("/requests");
     } catch (error) {
       toast({
         title: "Submission failed",

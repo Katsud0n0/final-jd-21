@@ -2,26 +2,35 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 const Profile = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [requests, setRequests] = useState(() => {
     const storedRequests = localStorage.getItem("jd-requests");
     return storedRequests ? JSON.parse(storedRequests) : [];
   });
 
+  // Filter requests for current user
+  const userRequests = requests.filter((r: any) => r.creator === user?.username);
+
   // Calculate stats
-  const totalRequests = requests.length;
-  const completedRequests = requests.filter((r: any) => r.status === "Completed").length;
-  const pendingRequests = requests.filter((r: any) => r.status === "Pending").length;
+  const totalRequests = userRequests.length;
+  const completedRequests = userRequests.filter((r: any) => r.status === "Completed").length;
+  const pendingRequests = userRequests.filter((r: any) => r.status === "Pending").length;
 
   // Get recent activity
-  const recentActivity = requests.slice(0, 3);
+  const recentActivity = userRequests.slice(0, 3);
 
   // Format initials for avatar
   const getInitials = () => {
     if (!user?.fullName) return "U";
     return user.fullName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+  };
+
+  const goToSettings = () => {
+    navigate("/settings");
   };
 
   return (
@@ -32,7 +41,7 @@ const Profile = () => {
             <div className="h-24 w-24 rounded-full bg-jd-purple flex items-center justify-center text-white text-2xl font-medium">
               {getInitials()}
             </div>
-            <h2 className="mt-4 text-2xl font-medium">{user?.username}</h2>
+            <h2 className="mt-4 text-2xl font-medium">{user?.fullName}</h2>
             <p className="text-jd-mutedText">@{user?.username}</p>
           </div>
           
@@ -64,10 +73,18 @@ const Profile = () => {
           </div>
           
           <div className="mt-6 space-y-4">
-            <Button variant="outline" className="w-full">
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => navigate("/settings?tab=account")}
+            >
               Edit Profile
             </Button>
-            <Button variant="outline" className="w-full">
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => navigate("/settings")}
+            >
               Settings
             </Button>
             <Button 
