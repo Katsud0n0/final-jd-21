@@ -1,10 +1,19 @@
 
 import { useState, useEffect } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import RequestForm from "@/components/dashboard/RequestForm";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -43,6 +52,7 @@ const Requests = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [requestToDelete, setRequestToDelete] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     // Load requests from localStorage
@@ -54,6 +64,16 @@ const Requests = () => {
     if (storedRequests) {
       setRequests(JSON.parse(storedRequests));
     }
+  };
+
+  // Function to close dialog and refresh requests
+  const handleRequestSuccess = () => {
+    setDialogOpen(false);
+    loadRequests(); // Reload requests to show the new one
+    toast({
+      title: "Request created",
+      description: "Your request has been successfully created.",
+    });
   };
 
   const handleStatusChange = (requestId: string, newStatus: string) => {
@@ -106,6 +126,33 @@ const Requests = () => {
 
   return (
     <div className="space-y-6">
+      {/* Page Header with Make Request Button */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="text-3xl font-bold">Requests</h2>
+          <p className="text-jd-mutedText text-lg">
+            Manage and track department requests
+          </p>
+        </div>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-jd-purple hover:bg-jd-darkPurple">
+              <Plus className="mr-2 h-4 w-4" />
+              Make a Request
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px] bg-jd-card border-jd-card">
+            <DialogHeader>
+              <DialogTitle>Create New Request</DialogTitle>
+              <DialogDescription>
+                Submit a new request to another department
+              </DialogDescription>
+            </DialogHeader>
+            <RequestForm onSuccess={handleRequestSuccess} />
+          </DialogContent>
+        </Dialog>
+      </div>
+
       {/* Search and Filter */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1 relative">
