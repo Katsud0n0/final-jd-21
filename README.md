@@ -1,26 +1,94 @@
-# Welcome to your Lovable project
 
-## Project info
+# JD Frameworks – Project Dashboard Platform
 
-**URL**: https://lovable.dev/projects/55c14ee3-d933-49e1-bd43-e016e00fcad6
+## 📚 Project Overview
 
-## How can I edit this code?
+**JD Frameworks** is a dashboard web application designed for seamless department and project management within large organizations (such as government or educational institutions). The platform helps visualize cross-department collaboration, track project progress, manage team members, requests, and analyze performance using interactive charts.
 
-There are several ways of editing your application.
+This project is developed as a college project. It is fully functional in its current form using realistic mock data, even without any backend connection!
 
-**Use Lovable**
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/55c14ee3-d933-49e1-bd43-e016e00fcad6) and start prompting.
+## ✨ Features
 
-Changes made via Lovable will be committed automatically to this repo.
+- **Dashboard:** Visual overview of key statistics, including department success rates, inter-department collaboration charts, and project statuses.
+- **Department Management:** View and analyze collaboration between various departments.
+- **Team Management:** See and manage the list of team members (easily extensible).
+- **Requests:** Users can create, view, and (if they are the creator) delete their own requests.
+- **Profile & Settings:** Each user can manage their profile and customize basic settings.
+- **Landing Page:** Dynamic landing page that adapts based on login status.
+- **Notifications (coming soon):** Notifications feature is planned for a future update.
 
-**Use your preferred IDE**
+All data is **persisted locally using your browser's localStorage** for requests and uses in-memory mock data for charts and analysis.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## 🛠️ Technologies Used
 
-Follow these steps:
+- **Frontend:** React + TypeScript + Vite
+- **UI Kit:** shadcn/ui, Tailwind CSS
+- **Routing:** react-router-dom
+- **Charts:** recharts
+- **State Management & Data Fetching:** @tanstack/react-query (future-proofing)
+- **Persistent Storage:** browser localStorage for requests, static files for sample data
+
+No backend is required to use or demo the platform!
+
+
+## 🗂️ Where is the Data Stored?
+
+### Home Tab & Analytics
+
+- **Source:** All analytics charts and summary data (collaboration, interactions, project rates) are defined in `src/data/collaboration-data.ts`.
+- **How it Works:** This data is hardcoded and realistic, so the demo works out-of-the-box.
+- **Custom Backend:** If you later connect a real backend (such as a SQLite API), you should replace this mock data with API calls.
+
+### Requests & User Interactions
+
+- **Source:** User-created requests are stored in `localStorage`, so all create/delete actions are retained on your browser.
+
+
+## ⛔ Note for Your Project Submission
+
+You do **NOT** need to connect a backend for this college project. All demo and interaction data comes from static files or local browser storage – simply clone and run!
+
+
+---
+
+## 💡 (Optional) How To Connect SQLite Backend
+
+**You only need this if you want real backend data! The project works fine with mock data for college submissions.**
+
+### 1. Set Up SQLite + Express Backend
+
+- Install dependencies:
+  ```sh
+  npm install sqlite3 express cors
+  ```
+- Create an `Express` server (see example in `src/data/collaboration-data.ts` for guidance).
+- Build API endpoints to read/write data from SQLite (projects, departments, requests, etc).
+
+### 2. Update Database Schema
+
+- Write your schema using the example provided in `src/data/collaboration-data.ts` (inside comments).
+
+### 3. Connect Frontend to Backend
+
+- Replace mock data/statics in files like `src/data/collaboration-data.ts` with `fetch`/`axios` API calls to your backend endpoints.
+- Adapt localStorage request logic (in `RequestForm.tsx` and wherever requests are displayed) to POST/GET requests to your server for persistent storage.
+
+### 4. Testing
+
+- Start your backend server (e.g., `node backend/server.js`).
+- Update frontend code to use your backend URL (instead of static data).
+- Confirm data shows up live from your API.
+
+For college submissions, demo works fully without this step!
+
+
+---
+
+## 👩‍💻 Running The Project Locally
+
+Just follow these simple steps:
 
 ```sh
 # Step 1: Clone the repository using the project's Git URL.
@@ -30,44 +98,35 @@ git clone <YOUR_GIT_URL>
 cd <YOUR_PROJECT_NAME>
 
 # Step 3: Install the necessary dependencies.
-npm i
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: Start the development server.
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Open `http://localhost:5173` (or the port Vite shows) in your browser to use the app.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+---
 
-**Use GitHub Codespaces**
+## 📝 Important Files & Comments
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- Analytics & charts mock data:  
+  `src/data/collaboration-data.ts` (fully commented, includes SQLite backend example)
+- Departments list:  
+  `src/data/departments.ts`
+- Team members:  
+  `src/data/team.ts`
+- Request logic & demo:  
+  `src/components/dashboard/RequestForm.tsx` (comments show how localStorage works)
+- All code is commented for smoother understanding and future integrations!
 
-## What technologies are used for this project?
+---
 
-This project is built with:
+## 🗣️ Contact
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+For help, suggestions, or contributions, feel free to contact [Lovable support](https://lovable.dev) or post on [Lovable Discord](https://discord.gg/7TzaT2ehE9).
 
-## How can I deploy this project?
+---
 
-Simply open [Lovable](https://lovable.dev/projects/55c14ee3-d933-49e1-bd43-e016e00fcad6) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+**This project is intended for educational/demo purposes.**  
+Leave the mock data as is for your college submission, or follow the steps above to add real backend integration in the future!
