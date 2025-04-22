@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -110,14 +109,30 @@ const Profile = () => {
   // Filter requests for current user
   const userRequests = requests.filter((r: any) => r.creator === user?.username);
 
-  // Get archived projects
+  // Get archived projects (admin only)
   const archivedProjects = requests.filter(
-    (r: any) => r.type === "project" && r.archived && r.creator === user?.username
+    (r: any) => r.type === "project" && r.archived && 
+    // Show archived projects only to admins
+    (user?.role === "admin" ? r.department === user?.department : r.creator === user?.username)
   );
 
   // Get accepted requests/projects (in process)
   const acceptedItems = requests.filter(
-    (r: any) => r.status === "In Process" && r.creator === user?.username
+    (r: any) => {
+      // For regular requests: show if status is "In Process" and created by current user
+      if (r.type === "request") {
+        return r.status === "In Process" && r.creator === user?.username;
+      }
+      
+      // For projects: Only show projects where all required users have accepted
+      if (r.type === "project") {
+        return r.status === "In Process" && 
+               r.creator === user?.username &&
+               r.usersAccepted >= r.usersNeeded;
+      }
+      
+      return false;
+    }
   );
 
   // Get history items (completed or rejected)
@@ -189,8 +204,20 @@ const Profile = () => {
     });
   };
 
-  // Handle abandon (mark as rejected)
+  // Handle abandon (mark as rejected) - only for requests, not projects
   const handleAbandon = (itemId: string) => {
+    const item = requests.find((r: any) => r.id === itemId);
+    
+    // Don't allow abandoning projects
+    if (item && item.type === "project") {
+      toast({
+        title: "Cannot abandon project",
+        description: "Projects cannot be abandoned once accepted.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     const now = new Date();
     const updatedRequests = requests.map((r: any) => 
       r.id === itemId ? { 
@@ -239,6 +266,9 @@ const Profile = () => {
     
     return diffDays > 0 ? `${diffDays} days` : "Today";
   };
+
+  // Determine if the Archived tab should be shown (only for admins)
+  const showArchivedTab = user?.role === "admin";
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -312,13 +342,15 @@ const Profile = () => {
       
       <div className="lg:col-span-2 space-y-6">
         <Tabs defaultValue="activity">
-          <TabsList className="grid grid-cols-4">
+          <TabsList className={`grid ${showArchivedTab ? 'grid-cols-4' : 'grid-cols-3'}`}>
             <TabsTrigger value="activity">Activity</TabsTrigger>
             <TabsTrigger value="accepted">Accepted</TabsTrigger>
             <TabsTrigger value="history">History</TabsTrigger>
-            <TabsTrigger value="archived" className="flex items-center gap-1">
-              <Archive size={16} /> Archived
-            </TabsTrigger>
+            {showArchivedTab && (
+              <TabsTrigger value="archived" className="flex items-center gap-1">
+                <Archive size={16} /> Archived
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="activity" className="space-y-6 mt-4">
@@ -435,15 +467,19 @@ const Profile = () => {
                             <Check size={16} />
                             Mark Completed
                           </Button>
-                          <Button 
-                            size="sm" 
-                            variant="destructive"
-                            className="flex items-center gap-1"
-                            onClick={() => handleAbandon(item.id)}
-                          >
-                            <X size={16} />
-                            Abandon
-                          </Button>
+                          
+                          {/* Show Abandon button only for requests, not for projects */}
+                          {item.type !== "project" && (
+                            <Button 
+                              size="sm" 
+                              variant="destructive"
+                              className="flex items-center gap-1"
+                              onClick={() => handleAbandon(item.id)}
+                            >
+                              <X size={16} />
+                              Abandon
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -554,66 +590,68 @@ const Profile = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="archived" className="mt-4">
-            <div className="bg-jd-card rounded-lg p-6">
-              <h3 className="text-xl font-medium mb-6">Archived Projects</h3>
-              <p className="text-jd-mutedText mb-4">
-                Projects you've archived. These are hidden from the main view but still stored in the system.
-                <br />If a project's status is still pending, it will be permanently deleted 7 days after archiving.
-              </p>
-              
-              {archivedProjects.length > 0 ? (
-                <div className="space-y-4">
-                  {archivedProjects.map((project: any, index) => (
-                    <div key={index} className="border border-jd-bg rounded-lg p-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="font-medium">{project.title}</h4>
-                          <p className="text-sm text-jd-purple">{project.department}</p>
-                          <p className="text-sm text-jd-mutedText mt-1">{project.description?.slice(0, 100)}{project.description?.length > 100 ? '...' : ''}</p>
-                          <div className="mt-2 flex items-center">
-                            <span className="text-xs text-jd-mutedText">Archived on: {new Date(project.archivedAt).toLocaleDateString()}</span>
-                            {project.status === "Pending" && (
-                              <div className="ml-4 flex items-center gap-1 text-xs text-jd-orange">
-                                <Clock size={12} />
-                                <span>
-                                  Auto-delete in: {getDaysRemaining(project.archivedAt)}
-                                </span>
-                              </div>
-                            )}
+          {showArchivedTab && (
+            <TabsContent value="archived" className="mt-4">
+              <div className="bg-jd-card rounded-lg p-6">
+                <h3 className="text-xl font-medium mb-6">Archived Projects</h3>
+                <p className="text-jd-mutedText mb-4">
+                  Projects you've archived. These are hidden from the main view but still stored in the system.
+                  <br />If a project's status is still pending, it will be permanently deleted 7 days after archiving.
+                </p>
+                
+                {archivedProjects.length > 0 ? (
+                  <div className="space-y-4">
+                    {archivedProjects.map((project: any, index) => (
+                      <div key={index} className="border border-jd-bg rounded-lg p-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-medium">{project.title}</h4>
+                            <p className="text-sm text-jd-purple">{project.department}</p>
+                            <p className="text-sm text-jd-mutedText mt-1">{project.description?.slice(0, 100)}{project.description?.length > 100 ? '...' : ''}</p>
+                            <div className="mt-2 flex items-center">
+                              <span className="text-xs text-jd-mutedText">Archived on: {new Date(project.archivedAt).toLocaleDateString()}</span>
+                              {project.status === "Pending" && (
+                                <div className="ml-4 flex items-center gap-1 text-xs text-jd-orange">
+                                  <Clock size={12} />
+                                  <span>
+                                    Auto-delete in: {getDaysRemaining(project.archivedAt)}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleUnarchive(project.id)}
+                            >
+                              Restore
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="destructive"
+                              onClick={() => handleDelete(project.id)}
+                            >
+                              Delete
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex flex-col gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleUnarchive(project.id)}
-                          >
-                            Restore
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="destructive"
-                            onClick={() => handleDelete(project.id)}
-                          >
-                            Delete
-                          </Button>
-                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 bg-jd-bg rounded-lg">
-                  <Archive size={48} className="mx-auto text-jd-mutedText mb-3" />
-                  <h4 className="text-lg font-medium mb-2">No Archived Projects</h4>
-                  <p className="text-jd-mutedText max-w-md mx-auto">
-                    Projects you archive will appear here. Archived projects are hidden from the main requests view.
-                  </p>
-                </div>
-              )}
-            </div>
-          </TabsContent>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 bg-jd-bg rounded-lg">
+                    <Archive size={48} className="mx-auto text-jd-mutedText mb-3" />
+                    <h4 className="text-lg font-medium mb-2">No Archived Projects</h4>
+                    <p className="text-jd-mutedText max-w-md mx-auto">
+                      Projects you archive will appear here. Archived projects are hidden from the main requests view.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>

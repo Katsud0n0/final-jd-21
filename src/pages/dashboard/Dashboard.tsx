@@ -26,6 +26,8 @@ const Dashboard = () => {
     }
     
     // Check for expired requests on component mount
+    // This immediately checks if any requests need to be marked as expired
+    // or deleted based on their status and timestamps
     checkExpiredRequests();
   }, []);
 

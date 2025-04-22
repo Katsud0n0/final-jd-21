@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Trash2, Plus, Archive, Check, X, Clock, Ban } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -89,7 +88,7 @@ const Requests = () => {
     }
   };
 
-  // Clear all requests from localStorage (as requested by user)
+  // Clear all requests from localStorage (admin only)
   const clearAllRequests = () => {
     localStorage.removeItem("jd-requests");
     setRequests([]);
@@ -421,6 +420,9 @@ const Requests = () => {
     return matchesSearch && matchesStatus && matchesType && isVisible;
   });
 
+  // Check if current user is admin
+  const isAdmin = user?.role === 'admin';
+
   return (
     <div className="space-y-6">
       {/* Page Header with Make Request Button */}
@@ -592,8 +594,8 @@ const Requests = () => {
                           <span className={`px-2 py-1 rounded text-xs ${
                             request.status === "Pending" ? "bg-jd-orange/20 text-jd-orange" : 
                             request.status === "In Process" ? "bg-blue-500/20 text-blue-500" :
-                            request.status === "Completed" ? "bg-green-500/20 text-green-500" :
-                            "bg-red-500/20 text-red-500"
+                            request.status === "Completed" ? "bg-jd-green/20 text-jd-green" :
+                            "bg-jd-red/20 text-jd-red"
                           }`}>
                             {request.status}
                           </span>
@@ -748,36 +750,38 @@ const Requests = () => {
         </AlertDialogContent>
       </AlertDialog>
       
-      {/* Clear all requests button (temporary, as requested by user) */}
-      <div className="flex justify-end">
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button 
-              variant="destructive" 
-              className="mt-4"
-            >
-              Clear All Requests
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent className="bg-jd-card border-jd-card">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Clear All Requests</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently remove ALL requests from the system. This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel className="bg-jd-bg hover:bg-jd-bg/80">Cancel</AlertDialogCancel>
-              <AlertDialogAction 
-                className="bg-red-600 hover:bg-red-700"
-                onClick={clearAllRequests}
+      {/* Clear all requests button (admin only) */}
+      {isAdmin && (
+        <div className="flex justify-end">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button 
+                variant="destructive" 
+                className="mt-4"
               >
-                Clear All
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
+                Clear All Requests
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="bg-jd-card border-jd-card">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear All Requests</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently remove ALL requests from the system. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="bg-jd-bg hover:bg-jd-bg/80">Cancel</AlertDialogCancel>
+                <AlertDialogAction 
+                  className="bg-red-600 hover:bg-red-700"
+                  onClick={clearAllRequests}
+                >
+                  Clear All
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      )}
     </div>
   );
 };

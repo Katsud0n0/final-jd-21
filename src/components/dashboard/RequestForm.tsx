@@ -30,9 +30,9 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
     description: "",
     department: "",
     type: "request",
-    relatedProject: "", // New field for linking to existing projects
+    relatedProject: "", // For linking to existing projects
     priority: "medium",
-    usersNeeded: "1", // New field for number of users needed
+    usersNeeded: "2", // Minimum 2 users by default for projects
   });
 
   useEffect(() => {
@@ -55,7 +55,13 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
   };
 
   const handleTypeChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, type: value, relatedProject: "" }));
+    setFormData((prev) => ({ 
+      ...prev, 
+      type: value, 
+      relatedProject: "",
+      // Reset usersNeeded to 2 if changing to project type
+      usersNeeded: value === "project" ? "2" : prev.usersNeeded
+    }));
   };
 
   const handleProjectChange = (value: string) => {
@@ -130,7 +136,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         type: "request",
         relatedProject: "",
         priority: "medium",
-        usersNeeded: "1",
+        usersNeeded: "2", // Reset to default 2 users
       });
 
       // Call the success callback
@@ -272,7 +278,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
                 <SelectValue placeholder="Select number of users needed" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1">1 user</SelectItem>
+                {/* Starting from 2 users now as minimum */}
                 <SelectItem value="2">2 users</SelectItem>
                 <SelectItem value="3">3 users</SelectItem>
                 <SelectItem value="4">4 users</SelectItem>
