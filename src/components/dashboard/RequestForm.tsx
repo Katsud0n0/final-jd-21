@@ -24,6 +24,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingProjects, setExistingProjects] = useState<any[]>([]);
+  const [formError, setFormError] = useState("");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -49,6 +50,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
 
   const handleDepartmentChange = (value: string) => {
     setFormData((prev) => ({ ...prev, department: value }));
+    setFormError(""); // Clear any error when department is selected
   };
 
   const handleTypeChange = (value: string) => {
@@ -65,7 +67,15 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate department selection
+    if (!formData.department) {
+      setFormError("Please select a department");
+      return;
+    }
+    
     setIsSubmitting(true);
+    setFormError("");
 
     try {
       // Simulate API call
@@ -200,13 +210,15 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="department">Department</Label>
+        <Label htmlFor="department" className="flex items-center">
+          Department <span className="text-red-500 ml-1">*</span>
+        </Label>
         <Select
           value={formData.department}
           onValueChange={handleDepartmentChange}
           required
         >
-          <SelectTrigger>
+          <SelectTrigger className={formError ? "border-red-500" : ""}>
             <SelectValue placeholder="Select department" />
           </SelectTrigger>
           <SelectContent>
@@ -217,6 +229,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
             ))}
           </SelectContent>
         </Select>
+        {formError && <p className="text-xs text-red-500">{formError}</p>}
       </div>
 
       {formData.type === 'project' && (

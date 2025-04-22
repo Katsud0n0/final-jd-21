@@ -4,9 +4,12 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import RecentActivities from "@/components/dashboard/RecentActivities";
 import StatCard from "@/components/dashboard/StatCard";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import RequestForm from "@/components/dashboard/RequestForm";
 
 const Dashboard = () => {
   const [requests, setRequests] = useState<any[]>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   
   useEffect(() => {
     // Load requests from localStorage
@@ -15,6 +18,15 @@ const Dashboard = () => {
       setRequests(JSON.parse(storedRequests));
     }
   }, []);
+
+  const handleRequestSuccess = () => {
+    setIsDialogOpen(false);
+    // Reload requests to show the new one
+    const storedRequests = localStorage.getItem("jd-requests");
+    if (storedRequests) {
+      setRequests(JSON.parse(storedRequests));
+    }
+  };
 
   // Count requests by status
   const totalRequests = requests.length;
@@ -87,15 +99,20 @@ const Dashboard = () => {
                 >
                   <div className="flex justify-between">
                     <h4 className="font-medium">{request.title}</h4>
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      request.status === "Pending" 
-                        ? "bg-jd-orange/20 text-jd-orange"
-                        : request.status === "Completed" 
-                          ? "bg-jd-green/20 text-jd-green"
-                          : "bg-jd-red/20 text-jd-red"
-                    }`}>
-                      {request.status}
-                    </span>
+                    <div className="flex flex-col">
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        request.status === "Pending" 
+                          ? "bg-jd-orange/20 text-jd-orange"
+                          : request.status === "Completed" 
+                            ? "bg-jd-green/20 text-jd-green"
+                            : "bg-jd-red/20 text-jd-red"
+                      }`}>
+                        {request.status}
+                      </span>
+                      {(request.status === "Completed" || request.status === "Rejected") && (
+                        <span className="text-xs text-jd-mutedText mt-1">Expires in 1 day</span>
+                      )}
+                    </div>
                   </div>
                   <p className="text-sm text-jd-mutedText mt-1">Submitted to {request.department}</p>
                   <p className="text-sm text-jd-mutedText mt-1">{request.dateCreated}</p>
@@ -111,9 +128,22 @@ const Dashboard = () => {
               <p className="text-jd-mutedText mb-6">
                 You haven't created any interdepartmental requests yet.
               </p>
-              <Button className="bg-jd-purple hover:bg-jd-darkPurple">
-                Create Your First Request
-              </Button>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-jd-purple hover:bg-jd-darkPurple">
+                    Create Your First Request
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px] bg-jd-card border-jd-card">
+                  <DialogHeader>
+                    <DialogTitle>Create New Request</DialogTitle>
+                    <DialogDescription>
+                      Submit a new request to another department
+                    </DialogDescription>
+                  </DialogHeader>
+                  <RequestForm onSuccess={handleRequestSuccess} />
+                </DialogContent>
+              </Dialog>
             </div>
           )}
         </div>

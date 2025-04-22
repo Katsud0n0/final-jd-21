@@ -242,8 +242,10 @@ const Requests = () => {
     if (user?.role === "admin") {
       return user.department === request.department;
     }
-    // Regular user can only delete their own requests
-    return user?.username === request.creator;
+    // Regular user can only delete their own requests that are not completed/rejected
+    return user?.username === request.creator && 
+           request.status !== "Completed" && 
+           request.status !== "Rejected";
   };
 
   // Check if user can edit the status of a request
@@ -260,8 +262,7 @@ const Requests = () => {
            user?.department === request.department;
   };
 
-  // Filter requests based on search term, status filter, and type filter
-  // No longer filtering by user permissions - show all requests to everyone
+  // Show all requests to everyone - not filtering by permissions
   const filteredRequests = requests.filter(request => {
     const matchesSearch = request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          request.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -457,6 +458,9 @@ const Requests = () => {
                           }`}>
                             {request.status}
                           </span>
+                          {(request.status === "Completed" || request.status === "Rejected") && (
+                            <span className="text-xs text-jd-mutedText">Expires in 1 day</span>
+                          )}
                           {request.lastStatusUpdateTime && (
                             <div className="flex items-center gap-1 mt-1 text-xs text-jd-mutedText">
                               <Clock size={12} />
@@ -480,61 +484,65 @@ const Requests = () => {
                       )}
                     </td>
                     <td className="px-4 py-4">
-                      <div className="flex space-x-2">
-                        {/* Only show Archive button for admins */}
-                        {canArchiveProject(request) && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-jd-purple hover:text-jd-darkPurple hover:bg-jd-purple/10"
-                            onClick={() => handleArchive(request.id)}
-                          >
-                            <Archive size={18} />
-                          </Button>
-                        )}
-                        
-                        {canDeleteRequest(request) ? (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
+                      <div className="flex flex-col space-y-2">
+                        <div className="flex space-x-2">
+                          {/* Only show Archive button for admins */}
+                          {canArchiveProject(request) && user?.role === "admin" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-jd-purple hover:text-jd-darkPurple hover:bg-jd-purple/10"
+                              onClick={() => handleArchive(request.id)}
+                            >
+                              <Archive size={18} />
+                            </Button>
+                          )}
+                          
+                          {canDeleteRequest(request) ? (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-jd-red hover:text-red-600 hover:bg-red-500/10"
+                                  onClick={() => handleDelete(request.id)}
+                                >
+                                  <Trash2 size={18} />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="bg-jd-card border-jd-card">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Request</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete this request? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel className="bg-jd-bg hover:bg-jd-bg/80">Cancel</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    className="bg-red-600 hover:bg-red-700"
+                                    onClick={confirmDelete}
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          ) : (
+                            request.status !== "Completed" && request.status !== "Rejected" && (
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="text-jd-red hover:text-red-600 hover:bg-red-500/10"
-                                onClick={() => handleDelete(request.id)}
+                                className="text-gray-400 cursor-not-allowed"
+                                disabled={true}
                               >
                                 <Trash2 size={18} />
                               </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent className="bg-jd-card border-jd-card">
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Request</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete this request? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel className="bg-jd-bg hover:bg-jd-bg/80">Cancel</AlertDialogCancel>
-                                <AlertDialogAction 
-                                  className="bg-red-600 hover:bg-red-700"
-                                  onClick={confirmDelete}
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-gray-400 cursor-not-allowed"
-                            disabled={true}
-                          >
-                            <Trash2 size={18} />
-                          </Button>
-                        )}
+                            )
+                          )}
+                        </div>
                         
-                        {/* Move Accept button to the Actions column */}
+                        {/* Move Accept button below the Actions */}
                         {canAcceptRequest(request) && (
                           <Button 
                             size="sm"

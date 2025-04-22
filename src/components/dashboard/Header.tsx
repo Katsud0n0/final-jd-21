@@ -24,6 +24,12 @@ const Header = ({ title }: HeaderProps) => {
   const location = useLocation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  const handleRequestSuccess = () => {
+    setIsDialogOpen(false);
+    // Reload the current page to show the new request
+    window.location.reload();
+  };
+
   // Determine the current page title based on the pathname
   const getPageTitle = () => {
     const path = location.pathname;
@@ -48,14 +54,14 @@ const Header = ({ title }: HeaderProps) => {
               <Plus className="mr-2 h-4 w-4" /> New Request
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[425px] bg-jd-card border-jd-card">
             <DialogHeader>
               <DialogTitle>Create New Request</DialogTitle>
               <DialogDescription>
                 Submit a new interdepartmental request here.
               </DialogDescription>
             </DialogHeader>
-            <RequestForm onSuccess={() => setIsDialogOpen(false)} />
+            <RequestForm onSuccess={handleRequestSuccess} />
           </DialogContent>
         </Dialog>
         
