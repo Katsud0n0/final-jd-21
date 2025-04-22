@@ -19,7 +19,7 @@ const Dashboard = () => {
   // Count requests by status
   const totalRequests = requests.length;
   const pendingRequests = requests.filter(r => r.status === "Pending").length;
-  const approvedRequests = requests.filter(r => r.status === "Approved").length;
+  const completedRequests = requests.filter(r => r.status === "Completed").length;
   const rejectedRequests = requests.filter(r => r.status === "Rejected").length;
 
   return (
@@ -45,9 +45,9 @@ const Dashboard = () => {
         />
         
         <StatCard 
-          title="Approved"
-          value={approvedRequests}
-          description="Request accepted"
+          title="Completed"
+          value={completedRequests}
+          description="Request completed"
           icon={<CheckCircle size={18} />}
           color="jd-green"
         />
@@ -85,9 +85,9 @@ const Dashboard = () => {
                     <span className={`px-2 py-1 rounded text-xs ${
                       request.status === "Pending" 
                         ? "bg-jd-orange/20 text-jd-orange"
-                        : request.status === "Approved" 
-                        ? "bg-jd-green/20 text-jd-green"
-                        : "bg-jd-red/20 text-jd-red"
+                        : request.status === "Completed" 
+                                                ? "bg-jd-green/20 text-jd-green"
+                                                : "bg-jd-red/20 text-jd-red"
                     }`}>
                       {request.status}
                     </span>

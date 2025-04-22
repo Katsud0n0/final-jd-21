@@ -88,6 +88,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         type: formData.type,
         createdAt: now.toISOString(), // Add creation timestamp for expiration calculation
         creatorRole: user?.role || "client", // Save the role for permission checking
+        isExpired: false, // Not expired by default
         ...(formData.type === "project" && {
           priority: formData.priority,
           archived: false,

@@ -68,6 +68,9 @@ const Requests = () => {
   useEffect(() => {
     // Load requests from localStorage
     loadRequests();
+    
+    // Check for expired requests immediately on component mount
+    checkExpiredRequests();
 
     // Set up interval to check for expired requests
     const checkExpiryInterval = setInterval(checkExpiredRequests, 60000); // Check every minute
@@ -276,10 +279,11 @@ const Requests = () => {
     // Don't show archived projects in main view
     const isVisible = request.type !== "project" || !request.archived;
     
-    // Admin can see requests from their department, client can only see their own
+    // Show requests based on permissions
     const matchesPermission = 
       (user?.role === "admin" && user?.department === request.department) || 
-      request.creator === user?.username;
+      (user?.username === request.creator) ||
+      (request.creator === user?.username);
     
     return matchesSearch && matchesStatus && matchesType && isVisible && matchesPermission;
   });
@@ -419,7 +423,7 @@ const Requests = () => {
                 filteredRequests.map((request) => (
                   <tr 
                     key={request.id} 
-                    className={`border-t border-jd-bg ${request.isExpired ? 'opacity-50' : ''}`}
+                    className={`border-t border-jd-bg ${(request.status === "Completed" || request.status === "Rejected") ? 'opacity-50' : ''} ${request.isExpired ? 'opacity-30' : ''}`}
                   >
                     <td className="px-4 py-4 text-sm">{request.id}</td>
                     <td className="px-4 py-4 text-sm font-medium">
@@ -450,7 +454,7 @@ const Requests = () => {
                             ))}
                           </SelectContent>
                         </Select>
-                      ) : canAcceptRequest(request) ? (
+                      ) : (
                         <div className="flex flex-col gap-2">
                           <span className={`px-2 py-1 rounded text-xs ${
                             request.status === "Pending" ? "bg-jd-orange/20 text-jd-orange" : 
@@ -460,28 +464,21 @@ const Requests = () => {
                           }`}>
                             {request.status}
                           </span>
-                          <Button 
-                            size="sm"
-                            className="bg-jd-purple text-xs px-2 py-1"
-                            onClick={() => handleStatusChange(request.id, "In Process")}
-                          >
-                            Accept Request
-                          </Button>
-                        </div>
-                      ) : (
-                        <span className={`px-2 py-1 rounded text-xs ${
-                          request.status === "Pending" ? "bg-jd-orange/20 text-jd-orange" :
-                          request.status === "In Process" ? "bg-blue-500/20 text-blue-500" :
-                          request.status === "Completed" ? "bg-green-500/20 text-green-500" :
-                          "bg-red-500/20 text-red-500"
-                        }`}>
-                          {request.status}
-                        </span>
-                      )}
-                      {request.lastStatusUpdateTime && (
-                        <div className="flex items-center gap-1 mt-1 text-xs text-jd-mutedText">
-                          <Clock size={12} />
-                          <span>Updated: {request.lastStatusUpdateTime}</span>
+                          {request.lastStatusUpdateTime && (
+                            <div className="flex items-center gap-1 mt-1 text-xs text-jd-mutedText">
+                              <Clock size={12} />
+                              <span>Updated: {request.lastStatusUpdateTime}</span>
+                            </div>
+                          )}
+                          {canAcceptRequest(request) && (
+                            <Button 
+                              size="sm"
+                              className="bg-jd-purple text-xs px-2 py-1 mt-2"
+                              onClick={() => handleStatusChange(request.id, "In Process")}
+                            >
+                              Accept Request
+                            </Button>
+                          )}
                         </div>
                       )}
                     </td>
@@ -500,7 +497,7 @@ const Requests = () => {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex space-x-2">
-                        {canArchiveProject(request) && !request.archived && (
+                        {canArchiveProject(request) && user?.role === "admin" && !request.archived && (
                           <Button
                             variant="ghost"
                             size="icon"
