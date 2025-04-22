@@ -45,12 +45,12 @@ interface Request {
   type: string;
   expirationDate?: string;
   archived?: boolean;
-  archivedAt?: string; // Added to fix build error
-  createdAt?: string; // For calculating expiration
-  lastStatusUpdate?: string; // For tracking status updates
-  acceptedBy?: string; // For tracking who accepted the request
-  isExpired?: boolean; // For marking as expired visually
-  lastStatusUpdateTime?: string; // Timestamp for status updates
+  archivedAt?: string;
+  createdAt?: string;
+  lastStatusUpdate?: string;
+  acceptedBy?: string;
+  isExpired?: boolean;
+  lastStatusUpdateTime?: string;
 }
 
 const statusOptions = ["Pending", "In Process", "Completed", "Rejected"];
@@ -90,6 +90,8 @@ const Requests = () => {
     const now = new Date();
     const storedRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
     
+    let updated = false;
+    
     // Process each request based on type and status
     const updatedRequests = storedRequests.map((req: Request) => {
       // Check for completed/rejected items to mark as expired after 1 day
@@ -98,14 +100,16 @@ const Requests = () => {
         const oneDayLater = new Date(statusUpdateDate);
         oneDayLater.setDate(oneDayLater.getDate() + 1);
         
-        if (now > oneDayLater) {
+        if (now > oneDayLater && !req.isExpired) {
           // Mark as expired for visual fading, will be deleted on next check
+          updated = true;
           return { ...req, isExpired: true };
         }
       } 
       
       // Auto-delete expired items
       if (req.isExpired) {
+        updated = true;
         return null; // Mark for deletion
       }
       
@@ -120,6 +124,7 @@ const Requests = () => {
         expiryDate.setDate(expiryDate.getDate() + expiryDays);
         
         if (now > expiryDate) {
+          updated = true;
           return null; // Mark for deletion
         }
       } else if (req.type === "project") {
@@ -129,6 +134,7 @@ const Requests = () => {
         archiveDate.setDate(archiveDate.getDate() + archiveDays);
         
         if (now > archiveDate && !req.archived) {
+          updated = true;
           return { ...req, archived: true, archivedAt: now.toISOString() };
         }
         
@@ -138,6 +144,7 @@ const Requests = () => {
           deleteDate.setDate(deleteDate.getDate() + 7);
           
           if (now > deleteDate) {
+            updated = true;
             return null; // Mark for deletion
           }
         }
@@ -146,7 +153,7 @@ const Requests = () => {
       return req;
     }).filter(Boolean); // Remove null items (deleted requests)
     
-    if (updatedRequests.length < storedRequests.length) {
+    if (updated) {
       // Some requests were expired/deleted
       localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
       setRequests(updatedRequests);
@@ -154,15 +161,6 @@ const Requests = () => {
       toast({
         title: "Requests updated",
         description: "Some requests have been archived or removed due to expiration.",
-      });
-    } else if (JSON.stringify(updatedRequests) !== JSON.stringify(storedRequests)) {
-      // Some requests were updated (archived)
-      localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
-      setRequests(updatedRequests);
-      
-      toast({
-        title: "Projects archived",
-        description: "Some projects have been archived due to inactivity.",
       });
     }
   };
@@ -262,7 +260,8 @@ const Requests = () => {
            user?.department === request.department;
   };
 
-  // Filter requests based on search term, status filter, type filter, and user role
+  // Filter requests based on search term, status filter, and type filter
+  // No longer filtering by user permissions - show all requests to everyone
   const filteredRequests = requests.filter(request => {
     const matchesSearch = request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          request.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -279,13 +278,7 @@ const Requests = () => {
     // Don't show archived projects in main view
     const isVisible = request.type !== "project" || !request.archived;
     
-    // Show requests based on permissions
-    const matchesPermission = 
-      (user?.role === "admin" && user?.department === request.department) || 
-      (user?.username === request.creator) ||
-      (request.creator === user?.username);
-    
-    return matchesSearch && matchesStatus && matchesType && isVisible && matchesPermission;
+    return matchesSearch && matchesStatus && matchesType && isVisible;
   });
 
   return (
@@ -470,15 +463,6 @@ const Requests = () => {
                               <span>Updated: {request.lastStatusUpdateTime}</span>
                             </div>
                           )}
-                          {canAcceptRequest(request) && (
-                            <Button 
-                              size="sm"
-                              className="bg-jd-purple text-xs px-2 py-1 mt-2"
-                              onClick={() => handleStatusChange(request.id, "In Process")}
-                            >
-                              Accept Request
-                            </Button>
-                          )}
                         </div>
                       )}
                     </td>
@@ -497,7 +481,8 @@ const Requests = () => {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex space-x-2">
-                        {canArchiveProject(request) && user?.role === "admin" && !request.archived && (
+                        {/* Only show Archive button for admins */}
+                        {canArchiveProject(request) && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -546,6 +531,17 @@ const Requests = () => {
                             disabled={true}
                           >
                             <Trash2 size={18} />
+                          </Button>
+                        )}
+                        
+                        {/* Move Accept button to the Actions column */}
+                        {canAcceptRequest(request) && (
+                          <Button 
+                            size="sm"
+                            className="bg-jd-purple text-xs"
+                            onClick={() => handleStatusChange(request.id, "In Process")}
+                          >
+                            Accept
                           </Button>
                         )}
                       </div>

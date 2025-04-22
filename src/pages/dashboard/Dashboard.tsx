@@ -79,15 +79,20 @@ const Dashboard = () => {
           {requests.length > 0 ? (
             <div className="space-y-4">
               {requests.slice(0, 3).map((request, index) => (
-                <div key={index} className="p-4 bg-jd-bg rounded-lg">
+                <div 
+                  key={index} 
+                  className={`p-4 bg-jd-bg rounded-lg ${
+                    (request.status === "Completed" || request.status === "Rejected") ? 'opacity-50' : ''
+                  } ${request.isExpired ? 'opacity-30' : ''}`}
+                >
                   <div className="flex justify-between">
                     <h4 className="font-medium">{request.title}</h4>
                     <span className={`px-2 py-1 rounded text-xs ${
                       request.status === "Pending" 
                         ? "bg-jd-orange/20 text-jd-orange"
                         : request.status === "Completed" 
-                                                ? "bg-jd-green/20 text-jd-green"
-                                                : "bg-jd-red/20 text-jd-red"
+                          ? "bg-jd-green/20 text-jd-green"
+                          : "bg-jd-red/20 text-jd-red"
                     }`}>
                       {request.status}
                     </span>
