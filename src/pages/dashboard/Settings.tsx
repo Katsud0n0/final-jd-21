@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
@@ -41,6 +41,31 @@ const Settings = () => {
     departmentAnnouncements: user?.notificationSettings?.departmentAnnouncements || true,
     mentionAlerts: user?.notificationSettings?.mentionAlerts || true,
   });
+
+  // Update state when user data changes
+  useEffect(() => {
+    if (user) {
+      setAccountData({
+        fullName: user.fullName || "",
+        email: user.email || "",
+        phone: user.phone || "",
+      });
+      
+      setPrivacySettings({
+        showEmail: user.privacySettings?.showEmail || false,
+        showPhone: user.privacySettings?.showPhone || false,
+        allowDirectMessages: user.privacySettings?.allowDirectMessages || true,
+        showOnlineStatus: user.privacySettings?.showOnlineStatus || true,
+      });
+      
+      setNotificationSettings({
+        emailNotifications: user.notificationSettings?.emailNotifications || true,
+        requestUpdates: user.notificationSettings?.requestUpdates || true,
+        departmentAnnouncements: user.notificationSettings?.departmentAnnouncements || true,
+        mentionAlerts: user.notificationSettings?.mentionAlerts || true,
+      });
+    }
+  }, [user]);
 
   const handleAccountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

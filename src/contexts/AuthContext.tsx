@@ -12,6 +12,18 @@ type User = {
   phone?: string;
   role: "admin" | "client";
   status?: "active" | "blocked" | "banned";
+  privacySettings?: {
+    showEmail: boolean;
+    showPhone: boolean;
+    allowDirectMessages: boolean;
+    showOnlineStatus: boolean;
+  };
+  notificationSettings?: {
+    emailNotifications: boolean;
+    requestUpdates: boolean;
+    departmentAnnouncements: boolean;
+    mentionAlerts: boolean;
+  };
 };
 
 interface AuthContextType {
@@ -22,6 +34,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   updateUserStatus: (username: string, status: "active" | "blocked" | "banned") => void;
+  updateUser: (updatedUser: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -103,6 +116,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       title: "User status updated",
       description: `User ${username} has been ${status}.`,
     });
+  };
+
+  // Add the updateUser function
+  const updateUser = (updatedUser: User) => {
+    // Update the current user
+    localStorage.setItem("jd-user", JSON.stringify(updatedUser));
+    setUser(updatedUser);
+    
+    // Update in all users too
+    const updatedUsers = allUsers.map(u => 
+      u.id === updatedUser.id ? updatedUser : u
+    );
+    
+    saveAllUsers(updatedUsers);
   };
 
   const login = async (username: string, password: string) => {
@@ -270,6 +297,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         isLoading,
         updateUserStatus,
+        updateUser,
       }}
     >
       {children}
