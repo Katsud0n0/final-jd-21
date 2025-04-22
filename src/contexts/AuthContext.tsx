@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       else if (email.includes('@environment.')) department = "Environment";
       else if (email.includes('@finance.')) department = "Finance";
       
-      // Mock user data (in a real app, this would come from your API)
+      // Mock user data (in a real app, this would come from your API or SQLite database)
       const userData: User = {
         id: "user-123",
         username: username.toLowerCase(),
@@ -82,12 +82,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: isAdmin ? "admin" : "client"
       };
       
+      // Save to localStorage (in a real app with SQLite, you'd instead verify against the database)
       localStorage.setItem("jd-user", JSON.stringify(userData));
       setUser(userData);
       
       toast({
         title: "Login successful",
-        description: `Welcome back, ${userData.role}!`,
+        description: `Welcome back, ${userData.fullName}! You are logged in as ${userData.role}${isAdmin ? ' for ' + department : ''}.`,
       });
       
       navigate("/dashboard");
@@ -120,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                      email.endsWith('@environment.com') || 
                      email.endsWith('@finance.com');
       
-      // Mock user registration
+      // In a real app, this would store data in SQLite
       const userData: User = {
         id: `user-${Date.now()}`,
         username: username.toLowerCase(),

@@ -45,6 +45,7 @@ interface Request {
   type: string;
   expirationDate?: string;
   archived?: boolean;
+  createdAt?: string; // For calculating expiration
 }
 
 const statusOptions = ["Pending", "In Process", "Approved", "Rejected"];
@@ -81,24 +82,62 @@ const Requests = () => {
     const now = new Date();
     const storedRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
     
-    // Filter out expired requests that are not projects
-    const validRequests = storedRequests.filter((req: Request) => {
-      if (req.type === "project") return true; // Projects don't expire
+    // Process each request based on type and status
+    const updatedRequests = storedRequests.map((req: Request) => {
+      if (req.status !== "Pending") return req;
       
-      if (!req.expirationDate) return true; // Skip if no expiration date
+      const createdDate = new Date(req.createdAt || req.dateCreated);
       
-      const expiryDate = new Date(req.expirationDate);
-      return expiryDate > now;
-    });
+      if (req.type === "request") {
+        // For requests: Auto-delete after 30 days if pending
+        const expiryDays = 30;
+        const expiryDate = new Date(createdDate);
+        expiryDate.setDate(expiryDate.getDate() + expiryDays);
+        
+        if (now > expiryDate) {
+          return null; // Mark for deletion
+        }
+      } else if (req.type === "project") {
+        // For projects: Auto-archive after 60 days if pending
+        const archiveDays = 60;
+        const archiveDate = new Date(createdDate);
+        archiveDate.setDate(archiveDate.getDate() + archiveDays);
+        
+        if (now > archiveDate && !req.archived) {
+          return { ...req, archived: true, archivedAt: now.toISOString() };
+        }
+        
+        // For archived projects: Auto-delete after 7 more days
+        if (req.archived && req.archivedAt) {
+          const deleteDate = new Date(req.archivedAt);
+          deleteDate.setDate(deleteDate.getDate() + 7);
+          
+          if (now > deleteDate) {
+            return null; // Mark for deletion
+          }
+        }
+      }
+      
+      return req;
+    }).filter(Boolean); // Remove null items (deleted requests)
     
-    if (validRequests.length < storedRequests.length) {
-      // Some requests were expired
-      localStorage.setItem("jd-requests", JSON.stringify(validRequests));
-      setRequests(validRequests);
+    if (updatedRequests.length < storedRequests.length) {
+      // Some requests were expired/deleted
+      localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+      setRequests(updatedRequests);
       
       toast({
-        title: "Requests expired",
-        description: "Some requests have been removed due to expiration.",
+        title: "Requests updated",
+        description: "Some requests have been archived or removed due to expiration.",
+      });
+    } else if (JSON.stringify(updatedRequests) !== JSON.stringify(storedRequests)) {
+      // Some requests were updated (archived)
+      localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+      setRequests(updatedRequests);
+      
+      toast({
+        title: "Projects archived",
+        description: "Some projects have been archived due to inactivity.",
       });
     }
   };
@@ -132,7 +171,7 @@ const Requests = () => {
   
   const handleArchive = (id: string) => {
     const updatedRequests = requests.map(r => 
-      r.id === id ? { ...r, archived: true } : r
+      r.id === id ? { ...r, archived: true, archivedAt: new Date().toISOString() } : r
     );
     setRequests(updatedRequests);
     localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
@@ -160,15 +199,26 @@ const Requests = () => {
 
   // Check if user can delete a specific request
   const canDeleteRequest = (request: Request) => {
-    // Admin can delete any request
-    if (user?.role === "admin") return true;
+    // Admin can delete requests in their department
+    if (user?.role === "admin") {
+      return user.department === request.department;
+    }
     // Regular user can only delete their own requests
     return user?.username === request.creator;
   };
 
   // Check if user can edit the status of a request
   const canEditStatus = (request: Request) => {
-    return user?.role === "admin";
+    // Only admin of the department can edit status
+    return user?.role === "admin" && user?.department === request.department;
+  };
+  
+  // Check if user can archive a project
+  const canArchiveProject = (request: Request) => {
+    // Only admin of the department can archive projects
+    return request.type === "project" && 
+           user?.role === "admin" && 
+           user?.department === request.department;
   };
 
   // Filter requests based on search term, status filter, type filter, and user role
@@ -188,8 +238,10 @@ const Requests = () => {
     // Don't show archived projects in main view
     const isVisible = request.type !== "project" || !request.archived;
     
-    // Admin can see all requests, client can only see their own
-    const matchesPermission = user?.role === "admin" || request.creator === user?.username;
+    // Admin can see requests from their department, client can only see their own
+    const matchesPermission = 
+      (user?.role === "admin" && user?.department === request.department) || 
+      request.creator === user?.username;
     
     return matchesSearch && matchesStatus && matchesType && isVisible && matchesPermission;
   });
@@ -370,18 +422,20 @@ const Requests = () => {
                     </td>
                     <td className="px-4 py-4 text-sm">
                       {request.type === "project" ? (
-                        <span className="text-jd-mutedText">N/A</span>
+                        request.status === "Pending" ? (
+                          <span>60 days</span>
+                        ) : (
+                          <span className="text-jd-mutedText">N/A</span>
+                        )
                       ) : (
                         <span>
-                          {request.expirationDate 
-                            ? new Date(request.expirationDate).toLocaleDateString("en-GB") 
-                            : "30 days"}
+                          {request.status === "Pending" ? "30 days" : "N/A"}
                         </span>
                       )}
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex space-x-2">
-                        {request.type === "project" && (user?.role === "admin" || canDeleteRequest(request)) && (
+                        {canArchiveProject(request) && !request.archived && (
                           <Button
                             variant="ghost"
                             size="icon"

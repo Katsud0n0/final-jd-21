@@ -1,18 +1,66 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Archive } from "lucide-react";
+import { Archive, Clock } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 const Profile = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [requests, setRequests] = useState(() => {
+  const { toast } = useToast();
+  const [requests, setRequests] = useState<any[]>([]);
+
+  useEffect(() => {
+    loadRequests();
+    
+    // Check for expired archived projects
+    const interval = setInterval(checkArchivedProjects, 60000); // Check every minute
+    
+    return () => clearInterval(interval);
+  }, []);
+  
+  const loadRequests = () => {
     const storedRequests = localStorage.getItem("jd-requests");
-    return storedRequests ? JSON.parse(storedRequests) : [];
-  });
+    if (storedRequests) {
+      setRequests(JSON.parse(storedRequests));
+    }
+  };
+  
+  // Check for archived projects that need to be deleted
+  const checkArchivedProjects = () => {
+    const now = new Date();
+    const storedRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
+    
+    const updatedRequests = storedRequests.filter((req: any) => {
+      // Skip if not archived or not pending
+      if (!req.archived || req.status !== "Pending") return true;
+      
+      // For archived projects, check if 7 days have passed
+      if (req.archivedAt) {
+        const archiveDate = new Date(req.archivedAt);
+        const deleteDate = new Date(archiveDate);
+        deleteDate.setDate(deleteDate.getDate() + 7);
+        
+        return now <= deleteDate; // Keep if not yet due for deletion
+      }
+      
+      return true;
+    });
+    
+    if (updatedRequests.length < storedRequests.length) {
+      // Some archived projects were deleted
+      localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+      setRequests(updatedRequests);
+      
+      toast({
+        title: "Projects removed",
+        description: "Some archived projects have been automatically deleted after 7 days.",
+      });
+    }
+  };
 
   // Filter requests for current user
   const userRequests = requests.filter((r: any) => r.creator === user?.username);
@@ -28,7 +76,9 @@ const Profile = () => {
   const pendingRequests = userRequests.filter((r: any) => r.status === "Pending").length;
 
   // Get recent activity
-  const recentActivity = userRequests.slice(0, 3);
+  const recentActivity = userRequests
+    .filter((r: any) => !r.archived)
+    .slice(0, 3);
 
   // Format initials for avatar
   const getInitials = () => {
@@ -39,10 +89,15 @@ const Profile = () => {
   // Handle unarchive project
   const handleUnarchive = (projectId: string) => {
     const updatedRequests = requests.map((r: any) => 
-      r.id === projectId ? { ...r, archived: false } : r
+      r.id === projectId ? { ...r, archived: false, archivedAt: null } : r
     );
     setRequests(updatedRequests);
     localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+    
+    toast({
+      title: "Project restored",
+      description: "The project has been restored from the archive.",
+    });
   };
 
   // Handle permanent delete
@@ -50,6 +105,26 @@ const Profile = () => {
     const updatedRequests = requests.filter((r: any) => r.id !== projectId);
     setRequests(updatedRequests);
     localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+    
+    toast({
+      title: "Project deleted",
+      description: "The project has been permanently deleted.",
+    });
+  };
+
+  // Calculate days left before auto-deletion for archived projects
+  const getDaysRemaining = (archivedAt: string) => {
+    if (!archivedAt) return "Unknown";
+    
+    const archiveDate = new Date(archivedAt);
+    const deleteDate = new Date(archiveDate);
+    deleteDate.setDate(deleteDate.getDate() + 7);
+    
+    const now = new Date();
+    const diffTime = deleteDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays > 0 ? `${diffDays} days` : "Today";
   };
 
   return (
@@ -68,6 +143,11 @@ const Profile = () => {
             <div>
               <p className="text-jd-mutedText text-sm">Department</p>
               <p className="font-medium">{user?.department}</p>
+            </div>
+            
+            <div>
+              <p className="text-jd-mutedText text-sm">Role</p>
+              <p className="capitalize">{user?.role}</p>
             </div>
             
             <div>
@@ -163,12 +243,21 @@ const Profile = () => {
                         <div className="flex flex-col items-end">
                           <span className={`px-2 py-1 rounded text-xs ${
                             activity.status === "Pending" ? "bg-jd-orange/20 text-jd-orange" :
+                            activity.status === "In Process" ? "bg-blue-500/20 text-blue-500" :
                             activity.status === "Approved" ? "bg-green-500/20 text-green-500" :
                             "bg-red-500/20 text-red-500"
                           }`}>
                             {activity.status}
                           </span>
                           <span className="text-xs text-jd-mutedText mt-1">{activity.dateCreated}</span>
+                          {activity.status === "Pending" && (
+                            <div className="flex items-center gap-1 text-xs text-jd-mutedText mt-1">
+                              <Clock size={12} />
+                              <span>
+                                Expires in: {activity.type === "request" ? "30 days" : "60 days"}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -187,7 +276,7 @@ const Profile = () => {
               <h3 className="text-xl font-medium mb-6">Archived Projects</h3>
               <p className="text-jd-mutedText mb-4">
                 Projects you've archived. These are hidden from the main view but still stored in the system.
-                <br />Projects will be permanently deleted after 60 days in archive.
+                <br />If a project's status is still pending, it will be permanently deleted 7 days after archiving.
               </p>
               
               {archivedProjects.length > 0 ? (
@@ -200,7 +289,15 @@ const Profile = () => {
                           <p className="text-sm text-jd-purple">{project.department}</p>
                           <p className="text-sm text-jd-mutedText mt-1">{project.description?.slice(0, 100)}{project.description?.length > 100 ? '...' : ''}</p>
                           <div className="mt-2 flex items-center">
-                            <span className="text-xs text-jd-mutedText">Archived on: {project.dateCreated}</span>
+                            <span className="text-xs text-jd-mutedText">Archived on: {new Date(project.archivedAt).toLocaleDateString()}</span>
+                            {project.status === "Pending" && (
+                              <div className="ml-4 flex items-center gap-1 text-xs text-jd-orange">
+                                <Clock size={12} />
+                                <span>
+                                  Auto-delete in: {getDaysRemaining(project.archivedAt)}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex flex-col gap-2">

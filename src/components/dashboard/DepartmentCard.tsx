@@ -2,6 +2,7 @@
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface DepartmentCardProps {
   id: string;
@@ -20,6 +21,11 @@ const DepartmentCard = ({
   color,
   requestCount,
 }: DepartmentCardProps) => {
+  const { user } = useAuth();
+  
+  // Check if admin has access to this department
+  const hasAccess = user?.role === "admin" && user?.department === name;
+
   return (
     <div className="border border-jd-card rounded-lg bg-jd-card overflow-hidden">
       <div className="p-4 flex items-center justify-between">
@@ -44,7 +50,14 @@ const DepartmentCard = ({
               {requestCount}
             </div>
           </div>
-          <Link to={`/departments/${id}`} className="text-jd-purple hover:text-jd-darkPurple">
+          <Link 
+            to={`/departments/${id}`} 
+            className={cn(
+              "text-jd-purple hover:text-jd-darkPurple",
+              !hasAccess && user?.role === "admin" && "opacity-50 pointer-events-none"
+            )}
+            title={!hasAccess && user?.role === "admin" ? "You don't have access to this department" : "View department"}
+          >
             <ChevronRight />
           </Link>
         </div>

@@ -36,7 +36,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
   useEffect(() => {
     // Load existing projects from localStorage
     const requests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
-    const projects = requests.filter((req: any) => req.type === "project");
+    const projects = requests.filter((req: any) => req.type === "project" && !req.archived);
     setExistingProjects(projects);
   }, []);
 
@@ -74,10 +74,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
       // Get existing requests
       const existingRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
       
-      // Calculate expiration date (30 days from now)
       const now = new Date();
-      const expirationDate = new Date(now);
-      expirationDate.setDate(now.getDate() + 30);
       
       // Create new request/project
       const newItem = {
@@ -85,11 +82,11 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         title: formData.title,
         department: formData.department,
         status: "Pending", // Always start with Pending status
-        dateCreated: new Date().toLocaleDateString("en-GB"),
+        dateCreated: now.toLocaleDateString("en-GB"),
         creator: user?.username || "user",
         description: formData.description,
         type: formData.type,
-        expirationDate: expirationDate.toISOString(),
+        createdAt: now.toISOString(), // Add creation timestamp for expiration calculation
         creatorRole: user?.role || "client", // Save the role for permission checking
         ...(formData.type === "project" && {
           priority: formData.priority,
@@ -123,7 +120,11 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
 
       toast({
         title: `${formData.type === 'project' ? 'Project' : 'Request'} created`,
-        description: `Your ${formData.type} has been successfully created.`,
+        description: `Your ${formData.type} has been successfully created with a pending status. ${
+          formData.type === 'request' 
+            ? 'Requests expire after 30 days if not approved.' 
+            : 'Projects expire after 60 days if not approved.'
+        }`,
       });
     } catch (error) {
       toast({
@@ -251,7 +252,10 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
       </div>
 
       <div className="text-xs text-jd-mutedText mt-2">
-        Note: Requests expire after 30 days if not approved.
+        {formData.type === 'request' 
+          ? 'Note: Requests expire after 30 days if status remains pending.'
+          : 'Note: Projects are archived after 60 days and deleted after 7 more days if status remains pending.'
+        }
       </div>
 
       <Button type="submit" className="w-full bg-jd-purple hover:bg-jd-darkPurple" disabled={isSubmitting}>
