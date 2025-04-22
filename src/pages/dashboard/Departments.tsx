@@ -2,6 +2,7 @@
 import { departments } from "@/data/departments";
 import DepartmentCard from "@/components/dashboard/DepartmentCard";
 import { useState, useEffect } from "react";
+import DepartmentDetailDialog from "@/components/dashboard/DepartmentDetailDialog";
 
 const Departments = () => {
   const [departmentsWithCounts, setDepartmentsWithCounts] = useState(departments);
@@ -41,15 +42,26 @@ const Departments = () => {
       
       <div className="grid grid-cols-1 gap-4">
         {departmentsWithCounts.map((dept) => (
-          <DepartmentCard
-            key={dept.id}
-            id={dept.id}
-            name={dept.name}
-            description={dept.description}
-            icon={dept.icon}
-            color={dept.color}
-            requestCount={dept.requestCount}
-          />
+          <div key={dept.id} className="bg-jd-card rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white bg-${dept.color} mr-3`}>
+                  {dept.icon}
+                </div>
+                <div>
+                  <h3 className="font-medium">{dept.name}</h3>
+                  <p className="text-sm text-jd-mutedText">{dept.requestCount} requests</p>
+                </div>
+              </div>
+              <DepartmentDetailDialog 
+                id={dept.id}
+                name={dept.name}
+                description={dept.description}
+                icon={dept.icon}
+                color={dept.color}
+              />
+            </div>
+          </div>
         ))}
       </div>
     </div>

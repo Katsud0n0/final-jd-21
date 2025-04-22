@@ -74,6 +74,11 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
       // Get existing requests
       const existingRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
       
+      // Calculate expiration date (30 days from now)
+      const now = new Date();
+      const expirationDate = new Date(now);
+      expirationDate.setDate(now.getDate() + 30);
+      
       // Create new request/project
       const newItem = {
         id: `#${Math.floor(100000 + Math.random() * 900000)}`,
@@ -84,11 +89,13 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         creator: user?.username || "user",
         description: formData.description,
         type: formData.type,
+        expirationDate: expirationDate.toISOString(),
         ...(formData.type === "project" && {
           priority: formData.priority,
+          archived: false,
         }),
         ...(formData.type === "request" && formData.relatedProject && {
-          relatedProject: formData.relatedProject,
+          relatedProject: formData.relatedProject !== "none" ? formData.relatedProject : null,
         }),
       };
       
@@ -158,6 +165,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
               <SelectValue placeholder="Select related project (optional)" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="none">None</SelectItem>
               {existingProjects.length > 0 ? (
                 existingProjects.map((project) => (
                   <SelectItem key={project.id} value={project.id}>
@@ -239,6 +247,10 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
           rows={4}
           required
         />
+      </div>
+
+      <div className="text-xs text-jd-mutedText mt-2">
+        Note: Requests expire after 30 days if not approved.
       </div>
 
       <Button type="submit" className="w-full bg-jd-purple hover:bg-jd-darkPurple" disabled={isSubmitting}>

@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Archive } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
@@ -32,6 +32,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Request {
   id: string;
@@ -41,9 +42,12 @@ interface Request {
   status: string;
   creator: string;
   description: string;
+  type: string;
+  expirationDate?: string;
+  archived?: boolean;
 }
 
-const statusOptions = ["Pending", "In progress", "Completed"];
+const statusOptions = ["Pending", "Approved", "Rejected"];
 
 const Requests = () => {
   const { toast } = useToast();
@@ -53,16 +57,49 @@ const Requests = () => {
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [requestToDelete, setRequestToDelete] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("all");
 
   useEffect(() => {
     // Load requests from localStorage
     loadRequests();
+
+    // Set up interval to check for expired requests
+    const checkExpiryInterval = setInterval(checkExpiredRequests, 60000); // Check every minute
+
+    return () => clearInterval(checkExpiryInterval);
   }, []);
 
   const loadRequests = () => {
     const storedRequests = localStorage.getItem("jd-requests");
     if (storedRequests) {
       setRequests(JSON.parse(storedRequests));
+    }
+  };
+
+  // Function to check for expired requests
+  const checkExpiredRequests = () => {
+    const now = new Date();
+    const storedRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
+    
+    // Filter out expired requests that are not projects
+    const validRequests = storedRequests.filter((req: Request) => {
+      if (req.type === "project") return true; // Projects don't expire
+      
+      if (!req.expirationDate) return true; // Skip if no expiration date
+      
+      const expiryDate = new Date(req.expirationDate);
+      return expiryDate > now;
+    });
+    
+    if (validRequests.length < storedRequests.length) {
+      // Some requests were expired
+      localStorage.setItem("jd-requests", JSON.stringify(validRequests));
+      setRequests(validRequests);
+      
+      toast({
+        title: "Requests expired",
+        description: "Some requests have been removed due to expiration.",
+      });
     }
   };
 
@@ -92,6 +129,19 @@ const Requests = () => {
   const handleDelete = (id: string) => {
     setRequestToDelete(id);
   };
+  
+  const handleArchive = (id: string) => {
+    const updatedRequests = requests.map(r => 
+      r.id === id ? { ...r, archived: true } : r
+    );
+    setRequests(updatedRequests);
+    localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+    
+    toast({
+      title: "Project archived",
+      description: "The project has been archived successfully.",
+    });
+  };
 
   const confirmDelete = () => {
     if (requestToDelete) {
@@ -113,7 +163,7 @@ const Requests = () => {
     return user?.username === request.creator;
   };
 
-  // Filter requests based on search term and status filter
+  // Filter requests based on search term, status filter, and type filter
   const filteredRequests = requests.filter(request => {
     const matchesSearch = request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          request.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -121,7 +171,16 @@ const Requests = () => {
     
     const matchesStatus = statusFilter === "All" || request.status === statusFilter;
     
-    return matchesSearch && matchesStatus;
+    // Filter by type based on active tab
+    const matchesType = 
+      activeTab === "all" || 
+      (activeTab === "requests" && request.type === "request") || 
+      (activeTab === "projects" && request.type === "project");
+    
+    // Don't show archived projects in main view
+    const isVisible = request.type !== "project" || !request.archived;
+    
+    return matchesSearch && matchesStatus && matchesType && isVisible;
   });
 
   return (
@@ -152,6 +211,15 @@ const Requests = () => {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Request/Project Type Tabs */}
+      <Tabs defaultValue="all" onValueChange={value => setActiveTab(value)}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="requests">Requests</TabsTrigger>
+          <TabsTrigger value="projects">Projects</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Search and Filter */}
       <div className="flex flex-col sm:flex-row gap-4">
@@ -238,6 +306,9 @@ const Requests = () => {
                   STATUS
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-jd-mutedText">
+                  EXPIRES
+                </th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-jd-mutedText">
                   ACTIONS
                 </th>
               </tr>
@@ -247,7 +318,14 @@ const Requests = () => {
                 filteredRequests.map((request) => (
                   <tr key={request.id} className="border-t border-jd-bg">
                     <td className="px-4 py-4 text-sm">{request.id}</td>
-                    <td className="px-4 py-4 text-sm font-medium">{request.title}</td>
+                    <td className="px-4 py-4 text-sm font-medium">
+                      {request.title}
+                      {request.type === "project" && (
+                        <span className="ml-2 px-2 py-0.5 text-xs bg-jd-purple/20 text-jd-purple rounded-full">
+                          Project
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-4 text-sm">{request.department}</td>
                     <td className="px-4 py-4 text-sm">{request.dateCreated}</td>
                     <td className="px-4 py-4 text-sm">{request.creator}</td>
@@ -268,53 +346,77 @@ const Requests = () => {
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="px-4 py-4">
-                      {canDeleteRequest(request) ? (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-jd-red hover:text-red-600 hover:bg-red-500/10"
-                              onClick={() => handleDelete(request.id)}
-                            >
-                              <Trash2 size={18} />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent className="bg-jd-card border-jd-card">
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Request</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete this request? This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel className="bg-jd-bg hover:bg-jd-bg/80">Cancel</AlertDialogCancel>
-                              <AlertDialogAction 
-                                className="bg-red-600 hover:bg-red-700"
-                                onClick={confirmDelete}
-                              >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                    <td className="px-4 py-4 text-sm">
+                      {request.type === "project" ? (
+                        <span className="text-jd-mutedText">N/A</span>
                       ) : (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-gray-400 cursor-not-allowed"
-                          disabled={true}
-                        >
-                          <Trash2 size={18} />
-                        </Button>
+                        <span>
+                          {request.expirationDate 
+                            ? new Date(request.expirationDate).toLocaleDateString("en-GB") 
+                            : "30 days"}
+                        </span>
                       )}
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex space-x-2">
+                        {request.type === "project" && canDeleteRequest(request) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-jd-purple hover:text-jd-darkPurple hover:bg-jd-purple/10"
+                            onClick={() => handleArchive(request.id)}
+                          >
+                            <Archive size={18} />
+                          </Button>
+                        )}
+                        
+                        {canDeleteRequest(request) ? (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-jd-red hover:text-red-600 hover:bg-red-500/10"
+                                onClick={() => handleDelete(request.id)}
+                              >
+                                <Trash2 size={18} />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="bg-jd-card border-jd-card">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Request</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete this request? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel className="bg-jd-bg hover:bg-jd-bg/80">Cancel</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  className="bg-red-600 hover:bg-red-700"
+                                  onClick={confirmDelete}
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-gray-400 cursor-not-allowed"
+                            disabled={true}
+                          >
+                            <Trash2 size={18} />
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-jd-mutedText">
+                  <td colSpan={8} className="px-4 py-8 text-center text-jd-mutedText">
                     No requests found
                   </td>
                 </tr>
