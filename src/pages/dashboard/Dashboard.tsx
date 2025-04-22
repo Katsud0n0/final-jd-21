@@ -1,7 +1,7 @@
-import { FileText, Clock, UserCheck, CheckCircle, Activity, TrendingUp, Users, Calendar } from "lucide-react";
+import { FileText, Clock, UserCheck, CheckCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { departments } from "@/data/departments";
+import RecentActivities from "@/components/dashboard/RecentActivities";
 
 const Dashboard = () => {
   const [requests, setRequests] = useState<any[]>([]);
@@ -19,38 +19,6 @@ const Dashboard = () => {
   const pendingRequests = requests.filter(r => r.status === "Pending").length;
   const inProgressRequests = requests.filter(r => r.status === "In progress").length;
   const completedRequests = requests.filter(r => r.status === "Completed").length;
-
-  // Sample activities data
-  const recentActivities = [
-    {
-      id: 1,
-      type: "meeting",
-      title: "Department Heads Meeting",
-      time: "2 hours ago",
-      icon: <Users className="text-jd-purple" size={20} />
-    },
-    {
-      id: 2,
-      type: "project",
-      title: "New Project Initiated",
-      time: "4 hours ago",
-      icon: <TrendingUp className="text-green-500" size={20} />
-    },
-    {
-      id: 3,
-      type: "update",
-      title: "Monthly Reports Updated",
-      time: "6 hours ago",
-      icon: <Activity className="text-blue-500" size={20} />
-    },
-    {
-      id: 4,
-      type: "deadline",
-      title: "Project Deadline Updated",
-      time: "12 hours ago",
-      icon: <Calendar className="text-orange-500" size={20} />
-    }
-  ];
 
   return (
     <div className="space-y-8">
@@ -96,22 +64,9 @@ const Dashboard = () => {
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Recent Activities - Replacing Department Statistics */}
-        <div className="lg:col-span-1 bg-jd-card rounded-lg p-6">
-          <h3 className="text-xl font-medium mb-6">Recent Activities</h3>
-          <div className="space-y-4">
-            {recentActivities.map((activity) => (
-              <div key={activity.id} className="flex items-start space-x-4 p-3 rounded-lg hover:bg-jd-bg transition-colors">
-                <div className="h-10 w-10 rounded-full bg-jd-bg flex items-center justify-center">
-                  {activity.icon}
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">{activity.title}</p>
-                  <p className="text-sm text-jd-mutedText">{activity.time}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+        {/* Recent Activities Component */}
+        <div className="lg:col-span-1">
+          <RecentActivities />
         </div>
         
         {/* Recent Requests */}
