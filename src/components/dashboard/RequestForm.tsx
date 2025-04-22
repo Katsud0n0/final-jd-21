@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -23,15 +23,22 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [existingProjects, setExistingProjects] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     department: "",
-    type: "request", // New field: can be 'request' or 'project'
-    startDate: "",
-    endDate: "",
+    type: "request",
+    relatedProject: "", // New field for linking to existing projects
     priority: "medium",
   });
+
+  useEffect(() => {
+    // Load existing projects from localStorage
+    const requests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
+    const projects = requests.filter((req: any) => req.type === "project");
+    setExistingProjects(projects);
+  }, []);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -45,7 +52,11 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
   };
 
   const handleTypeChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, type: value }));
+    setFormData((prev) => ({ ...prev, type: value, relatedProject: "" }));
+  };
+
+  const handleProjectChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, relatedProject: value }));
   };
 
   const handlePriorityChange = (value: string) => {
@@ -74,9 +85,10 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         description: formData.description,
         type: formData.type,
         ...(formData.type === "project" && {
-          startDate: formData.startDate,
-          endDate: formData.endDate,
           priority: formData.priority,
+        }),
+        ...(formData.type === "request" && formData.relatedProject && {
+          relatedProject: formData.relatedProject,
         }),
       };
       
@@ -92,8 +104,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         description: "",
         department: "",
         type: "request",
-        startDate: "",
-        endDate: "",
+        relatedProject: "",
         priority: "medium",
       });
 
@@ -136,6 +147,33 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         </Select>
       </div>
 
+      {formData.type === "request" && (
+        <div className="space-y-2">
+          <Label htmlFor="relatedProject">Related Project (Optional)</Label>
+          <Select
+            value={formData.relatedProject}
+            onValueChange={handleProjectChange}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select related project (optional)" />
+            </SelectTrigger>
+            <SelectContent>
+              {existingProjects.length > 0 ? (
+                existingProjects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.title}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="" disabled>
+                  No projects exist at this moment
+                </SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       <div className="space-y-2">
         <Label htmlFor="title">
           {formData.type === 'project' ? 'Project Title' : 'Request Title'}
@@ -171,50 +209,23 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
       </div>
 
       {formData.type === 'project' && (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="startDate">Start Date</Label>
-              <Input
-                id="startDate"
-                name="startDate"
-                type="date"
-                value={formData.startDate}
-                onChange={handleChange}
-                required={formData.type === 'project'}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="endDate">End Date</Label>
-              <Input
-                id="endDate"
-                name="endDate"
-                type="date"
-                value={formData.endDate}
-                onChange={handleChange}
-                required={formData.type === 'project'}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="priority">Priority</Label>
-            <Select
-              value={formData.priority}
-              onValueChange={handlePriorityChange}
-              required={formData.type === 'project'}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select priority" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </>
+        <div className="space-y-2">
+          <Label htmlFor="priority">Priority</Label>
+          <Select
+            value={formData.priority}
+            onValueChange={handlePriorityChange}
+            required={formData.type === 'project'}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select priority" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="low">Low</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       )}
 
       <div className="space-y-2">
