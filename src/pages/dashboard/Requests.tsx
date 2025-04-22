@@ -400,11 +400,11 @@ const Requests = () => {
            user?.department === request.department;
   };
 
-  // Show all requests to everyone - not filtering by permissions
+  // Modified filteredRequests to hide archived projects
   const filteredRequests = requests.filter(request => {
     const matchesSearch = request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         request.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         request.department.toLowerCase().includes(searchTerm.toLowerCase());
+                          request.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          request.department.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === "All" || request.status === statusFilter;
     
@@ -414,12 +414,10 @@ const Requests = () => {
       (activeTab === "requests" && request.type === "request") || 
       (activeTab === "projects" && request.type === "project");
     
-    // Don't show archived projects in main view for non-admins
-    const isVisible = request.type !== "project" || 
-                     !request.archived || 
-                     (user?.role === "admin" && request.department === user.department);
+    // Don't show archived projects in the request tab at all
+    const isNotArchived = !request.archived;
     
-    return matchesSearch && matchesStatus && matchesType && isVisible;
+    return matchesSearch && matchesStatus && matchesType && isNotArchived;
   });
 
   // Check if current user is admin
