@@ -1,4 +1,3 @@
-
 # JD Frameworks – Project Dashboard Platform
 
 ## 📚 Project Overview
@@ -10,22 +9,125 @@ This project is developed as a college project. It is fully functional in its cu
 
 ## ✨ Features
 
-- **Dashboard:** Visual overview of key statistics, including department success rates, inter-department collaboration charts, and project statuses.
-- **Department Management:** View and analyze collaboration between various departments with appropriate department icons.
-- **Team Management:** See and manage the list of team members (easily extensible).
-- **Role-Based Access:**
-  - **Admin role:** Can view all requests/projects, change status (Pending, In Process, Approved, Rejected), archive projects, delete any submission
-  - **Client role:** Can only view their own requests/projects, no editing permissions
-- **Status Management:** Track requests through Pending, In Process, Approved, or Rejected states
-- **Requests & Projects:** Toggle between viewing Requests and Projects with tabbed interface
-- **Archived Projects:** Admins can archive projects to keep the main interface clean
-- **Profile & Settings:** Each user can manage their profile and customize basic settings.
-- **Landing Page:** Dynamic landing page that adapts based on login status.
-- **Pre-Configured Department Logins:** Admin accounts for each department (Water Supply, Electricity, Health, etc.)
-- **Notifications (coming soon):** Notifications feature is planned for a future update.
+### Request Management
+- Create and track department requests
+- Toggle between Requests and Projects views
+- Status tracking (Pending, In Process, Approved, Rejected)
+- Request expiration:
+  - Regular requests expire after 30 days if pending
+  - Completed/Rejected requests expire after 1 day
 
-All data is **persisted locally using your browser's localStorage** for requests and uses in-memory mock data for charts and analysis.
+### Project System
+- Projects require multiple users (2-5 participants)
+- Project creator is automatically counted as first participant
+- All participants see the project in their profile once accepted
+- Project features:
+  - Cannot be abandoned once accepted
+  - Requires all participants to mark as complete
+  - Shows acceptance progress (e.g., "Accepted by 2/3 users")
+  - Auto-updates to "In Process" when required users join
+  - Archives after 60 days if pending
 
+### Role-Based Access
+- **Admin Features:**
+  - View all requests/projects in their department
+  - Change request/project status
+  - Archive projects
+  - Access to department management
+  - Clear all requests (admin only)
+  
+- **Client Features:**
+  - Create requests and projects
+  - Accept available projects
+  - View own submissions
+  - Mark projects as complete
+  - Cannot modify other users' requests
+
+### Profile & Settings
+- Privacy settings management
+- Notification preferences
+- Account information updates
+- View accepted requests and projects
+- Project completion tracking
+
+## 🗂️ Data Storage Options
+
+### Local Storage (Default)
+- All data persists in browser's localStorage
+- Perfect for demos and testing
+- No setup required
+
+### SQLite Integration (Optional)
+To use SQLite for persistent storage:
+
+1. **Setup Backend:**
+   ```sh
+   npm install sqlite3 express cors
+   ```
+
+2. **Create Database Schema:**
+   ```sql
+   -- Users table
+   CREATE TABLE users (
+     id TEXT PRIMARY KEY,
+     username TEXT UNIQUE,
+     fullName TEXT,
+     department TEXT,
+     email TEXT,
+     role TEXT,
+     status TEXT DEFAULT 'active'
+   );
+
+   -- Requests table
+   CREATE TABLE requests (
+     id TEXT PRIMARY KEY,
+     title TEXT,
+     description TEXT,
+     department TEXT,
+     creator TEXT,
+     status TEXT,
+     type TEXT,
+     dateCreated TEXT,
+     usersNeeded INTEGER,
+     usersAccepted INTEGER DEFAULT 0,
+     FOREIGN KEY(creator) REFERENCES users(username)
+   );
+
+   -- Request participants
+   CREATE TABLE request_participants (
+     request_id TEXT,
+     username TEXT,
+     status TEXT,
+     completedAt TEXT,
+     FOREIGN KEY(request_id) REFERENCES requests(id),
+     FOREIGN KEY(username) REFERENCES users(username)
+   );
+   ```
+
+3. **Configure Express Server:**
+   Create `backend/server.js`:
+   ```javascript
+   const express = require('express');
+   const sqlite3 = require('sqlite3');
+   const cors = require('cors');
+   
+   const app = express();
+   app.use(cors());
+   app.use(express.json());
+   
+   const db = new sqlite3.Database('./database.sqlite');
+   
+   // Define your API endpoints here
+   
+   app.listen(3000, () => {
+     console.log('Server running on port 3000');
+   });
+   ```
+
+4. **Update Frontend:**
+   - Replace localStorage calls with API requests
+   - Add proper error handling
+   - Implement user sessions
 
 ## 🛠️ Technologies Used
 

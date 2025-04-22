@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -97,25 +96,26 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
       
       const now = new Date();
       
-      // Create new request/project
+      // For projects, automatically include creator in accepted users
       const newItem = {
         id: `#${Math.floor(100000 + Math.random() * 900000)}`,
         title: formData.title,
         department: formData.department,
-        status: "Pending", // Always start with Pending status
+        status: "Pending",
         dateCreated: now.toLocaleDateString("en-GB"),
         creator: user?.username || "user",
         description: formData.description,
         type: formData.type,
-        createdAt: now.toISOString(), // Add creation timestamp for expiration calculation
-        creatorRole: user?.role || "client", // Save the role for permission checking
-        isExpired: false, // Not expired by default
-        acceptedBy: [], // Track which users have accepted the project
-        usersAccepted: 0, // Counter for accepted users
+        createdAt: now.toISOString(),
+        creatorRole: user?.role || "client",
+        isExpired: false,
+        acceptedBy: formData.type === "project" ? [user?.username || "user"] : [], // Auto-add creator
+        usersAccepted: formData.type === "project" ? 1 : 0, // Start count at 1 for creator
+        completedBy: [], // Track who marked as complete
         ...(formData.type === "project" && {
           priority: formData.priority,
           archived: false,
-          usersNeeded: parseInt(formData.usersNeeded), // Store as number
+          usersNeeded: parseInt(formData.usersNeeded) + 1, // Add 1 to include creator
         }),
         ...(formData.type === "request" && formData.relatedProject && {
           relatedProject: formData.relatedProject !== "none" ? formData.relatedProject : null,
