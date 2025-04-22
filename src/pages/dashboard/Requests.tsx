@@ -342,7 +342,8 @@ const Requests = () => {
     setProjectToAccept(null);
   };
 
-  // Check if user can accept a request (only clients can accept)
+  // Check if user can accept a request (only clients can accept),
+  // but for requests, the creator should NOT see the button.
   const canAcceptRequest = (request: Request) => {
     if (!user || !request) return false;
 
@@ -353,14 +354,15 @@ const Requests = () => {
     
     if (!basicConditions) return false;
     
-    // For projects, check if the user hasn't already accepted
+    // For projects, check if the user hasn't already accepted and is not the creator
     if (request.type === "project") {
       const acceptedBy = Array.isArray(request.acceptedBy) ? request.acceptedBy : [];
-      return !acceptedBy.includes(user.username);
+      // Exclude both creator and already accepted users
+      return request.creator !== user.username && !acceptedBy.includes(user.username);
     }
     
-    // For regular requests
-    return true;
+    // For regular requests, user must not be the creator
+    return request.creator !== user.username;
   };
 
   // Check if user can delete a specific request
@@ -599,9 +601,6 @@ const Requests = () => {
                           }`}>
                             {request.status}
                           </span>
-                          {(request.status === "Completed" || request.status === "Rejected") && (
-                            <span className="text-xs text-jd-mutedText">Expires in 1 day</span>
-                          )}
                           {request.type === "project" && request.usersNeeded && (
                             <span className="text-xs text-jd-mutedText mt-1">
                               Accepted by {request.usersAccepted || 0}/{request.usersNeeded} users
@@ -617,17 +616,25 @@ const Requests = () => {
                       )}
                     </td>
                     <td className="px-4 py-4 text-sm">
+                      {/* Show expiration info in this column only */}
                       {request.type === "project" ? (
                         request.status === "Pending" ? (
                           <span>60 days</span>
+                        ) : request.status === "Completed" || request.status === "Rejected" ? (
+                          <span>1 day</span>
                         ) : (
                           <span className="text-jd-mutedText">N/A</span>
                         )
                       ) : (
-                        <span>
-                          {request.status === "Pending" ? "30 days" : 
-                           (request.status === "Completed" || request.status === "Rejected") ? "1 day" : "N/A"}
-                        </span>
+                        <>
+                          {request.status === "Pending" ? (
+                            <span>30 days</span>
+                          ) : (request.status === "Completed" || request.status === "Rejected") ? (
+                            <span>1 day</span>
+                          ) : (
+                            <span className="text-jd-mutedText">N/A</span>
+                          )}
+                        </>
                       )}
                     </td>
                     <td className="px-4 py-4">
@@ -686,8 +693,7 @@ const Requests = () => {
                             </Button>
                           )}
                         </div>
-                        
-                        {/* Different acceptance buttons for projects and regular requests */}
+                        {/* Acceptance buttons for projects/requests, only shown if allowed */}
                         {canAcceptRequest(request) && (
                           <>
                             {request.type === "project" ? (

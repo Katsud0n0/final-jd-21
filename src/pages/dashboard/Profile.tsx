@@ -186,7 +186,6 @@ const Profile = () => {
     const now = new Date();
     const updatedRequests = requests.map((r: any) => {
       if (r.id === itemId) {
-        // Only for projects: Mark completed for user, but only set global status when all are done
         if (r.type === "project") {
           const participantsCompleted = Array.isArray(r.participantsCompleted)
             ? [...r.participantsCompleted]
@@ -194,8 +193,6 @@ const Profile = () => {
           if (!participantsCompleted.includes(user?.username)) {
             participantsCompleted.push(user?.username);
           }
-          // If all have marked completed, set status
-          // We need to check against all acceptedBy users (participants)
           const acceptedUsers = Array.isArray(r.acceptedBy) ? r.acceptedBy : [];
           if (participantsCompleted.length === acceptedUsers.length) {
             return {
@@ -292,6 +289,13 @@ const Profile = () => {
 
   // Determine if the Archived tab should be shown (only for admins)
   const showArchivedTab = user?.role === "admin";
+
+  // Function to check if a user has already marked this project as completed
+  const hasMarkedCompleted = (item: any) => {
+    return item.type === "project"
+      && Array.isArray(item.participantsCompleted)
+      && item.participantsCompleted.includes(user?.username);
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -484,11 +488,12 @@ const Profile = () => {
                         <div className="flex flex-col gap-2">
                           <Button 
                             size="sm" 
-                            className="flex items-center gap-1 bg-green-500 hover:bg-green-600"
+                            className={`flex items-center gap-1 bg-green-500 hover:bg-green-600 ${hasMarkedCompleted(item) ? 'opacity-60 pointer-events-none cursor-not-allowed' : ''}`}
                             onClick={() => handleMarkCompleted(item.id)}
+                            disabled={hasMarkedCompleted(item)}
                           >
                             <Check size={16} />
-                            Mark Completed
+                            {hasMarkedCompleted(item) ? "Completed (Waiting for others)" : "Mark Completed"}
                           </Button>
                           
                           {/* Show Abandon button only for requests, not for projects */}
