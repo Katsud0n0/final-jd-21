@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import DemoCredentials from "./DemoCredentials";
+import { Eye, EyeOff } from "lucide-react";
 
 const Login = () => {
   const { login } = useAuth();
@@ -14,6 +14,7 @@ const Login = () => {
     password: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [showDemoCredentials, setShowDemoCredentials] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -99,7 +100,50 @@ const Login = () => {
         </p>
       </div>
       
-      <DemoCredentials />
+      <div className="mt-8 pt-6 border-t border-jd-bg">
+        <Button 
+          variant="outline" 
+          onClick={() => setShowDemoCredentials(!showDemoCredentials)}
+          className="w-full flex items-center justify-center"
+        >
+          {showDemoCredentials ? (
+            <>
+              <EyeOff className="mr-2 h-4 w-4" />
+              Hide Demo Credentials
+            </>
+          ) : (
+            <>
+              <Eye className="mr-2 h-4 w-4" />
+              Show Demo Credentials
+            </>
+          )}
+        </Button>
+        
+        {showDemoCredentials && (
+          <div className="mt-4 p-4 bg-jd-bg rounded-lg">
+            <h3 className="font-medium mb-2">Admin Logins:</h3>
+            <ul className="space-y-1 text-sm text-jd-mutedText">
+              <li>Water Supply: admin@water.com</li>
+              <li>Electricity: admin@electricity.com</li>
+              <li>Health: admin@health.com</li>
+              <li>Education: admin@education.com</li>
+              <li>Sanitation: admin@sanitation.com</li>
+              <li>Public Works: admin@publicworks.com</li>
+              <li>Transportation: admin@transport.com</li>
+              <li>Urban Development: admin@urban.com</li>
+              <li>Environment: admin@environment.com</li>
+              <li>Finance: admin@finance.com</li>
+            </ul>
+            
+            <h3 className="font-medium mt-4 mb-2">Client Login:</h3>
+            <p className="text-sm text-jd-mutedText">
+              Username: client@jdframeworks.com
+            </p>
+            
+            <p className="mt-4 text-xs text-jd-mutedText">Password for all accounts: password123</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

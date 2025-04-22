@@ -24,7 +24,7 @@ const DepartmentCard = ({
   const { user } = useAuth();
   
   // Check if admin has access to this department
-  const hasAccess = user?.role === "admin" && user?.department === name;
+  const hasAccess = user?.role === "admin" ? user.department === name : true;
 
   return (
     <div className="border border-jd-card rounded-lg bg-jd-card overflow-hidden">
@@ -54,9 +54,9 @@ const DepartmentCard = ({
             to={`/departments/${id}`} 
             className={cn(
               "text-jd-purple hover:text-jd-darkPurple",
-              !hasAccess && user?.role === "admin" && "opacity-50 pointer-events-none"
+              !hasAccess && "opacity-50 pointer-events-none"
             )}
-            title={!hasAccess && user?.role === "admin" ? "You don't have access to this department" : "View department"}
+            title={!hasAccess ? "You don't have access to this department" : "View department"}
           >
             <ChevronRight />
           </Link>

@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { Trash2, Plus, Archive } from "lucide-react";
+import { Trash2, Plus, Archive, Check, X, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
@@ -45,10 +45,15 @@ interface Request {
   type: string;
   expirationDate?: string;
   archived?: boolean;
+  archivedAt?: string; // Added to fix build error
   createdAt?: string; // For calculating expiration
+  lastStatusUpdate?: string; // For tracking status updates
+  acceptedBy?: string; // For tracking who accepted the request
+  isExpired?: boolean; // For marking as expired visually
+  lastStatusUpdateTime?: string; // Timestamp for status updates
 }
 
-const statusOptions = ["Pending", "In Process", "Approved", "Rejected"];
+const statusOptions = ["Pending", "In Process", "Completed", "Rejected"];
 
 const Requests = () => {
   const { toast } = useToast();
@@ -84,6 +89,23 @@ const Requests = () => {
     
     // Process each request based on type and status
     const updatedRequests = storedRequests.map((req: Request) => {
+      // Check for completed/rejected items to mark as expired after 1 day
+      if ((req.status === "Completed" || req.status === "Rejected") && req.lastStatusUpdate) {
+        const statusUpdateDate = new Date(req.lastStatusUpdate);
+        const oneDayLater = new Date(statusUpdateDate);
+        oneDayLater.setDate(oneDayLater.getDate() + 1);
+        
+        if (now > oneDayLater) {
+          // Mark as expired for visual fading, will be deleted on next check
+          return { ...req, isExpired: true };
+        }
+      } 
+      
+      // Auto-delete expired items
+      if (req.isExpired) {
+        return null; // Mark for deletion
+      }
+      
       if (req.status !== "Pending") return req;
       
       const createdDate = new Date(req.createdAt || req.dateCreated);
@@ -153,9 +175,18 @@ const Requests = () => {
   };
 
   const handleStatusChange = (requestId: string, newStatus: string) => {
+    const now = new Date();
+    
     const updatedRequests = requests.map(r => 
-      r.id === requestId ? { ...r, status: newStatus } : r
+      r.id === requestId ? { 
+        ...r, 
+        status: newStatus, 
+        lastStatusUpdate: now.toISOString(),
+        lastStatusUpdateTime: now.toLocaleTimeString(),
+        ...(newStatus === "In Process" && user && { acceptedBy: user.username })
+      } : r
     );
+    
     setRequests(updatedRequests);
     localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
     
@@ -195,6 +226,13 @@ const Requests = () => {
       
       setRequestToDelete(null);
     }
+  };
+
+  // Check if user can accept a request (only clients can accept)
+  const canAcceptRequest = (request: Request) => {
+    return user?.role === "client" && 
+           request.status === "Pending" && 
+           !request.archived;
   };
 
   // Check if user can delete a specific request
@@ -379,7 +417,10 @@ const Requests = () => {
             <tbody>
               {filteredRequests.length > 0 ? (
                 filteredRequests.map((request) => (
-                  <tr key={request.id} className="border-t border-jd-bg">
+                  <tr 
+                    key={request.id} 
+                    className={`border-t border-jd-bg ${request.isExpired ? 'opacity-50' : ''}`}
+                  >
                     <td className="px-4 py-4 text-sm">{request.id}</td>
                     <td className="px-4 py-4 text-sm font-medium">
                       {request.title}
@@ -409,15 +450,39 @@ const Requests = () => {
                             ))}
                           </SelectContent>
                         </Select>
+                      ) : canAcceptRequest(request) ? (
+                        <div className="flex flex-col gap-2">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            request.status === "Pending" ? "bg-jd-orange/20 text-jd-orange" : 
+                            request.status === "In Process" ? "bg-blue-500/20 text-blue-500" :
+                            request.status === "Completed" ? "bg-green-500/20 text-green-500" :
+                            "bg-red-500/20 text-red-500"
+                          }`}>
+                            {request.status}
+                          </span>
+                          <Button 
+                            size="sm"
+                            className="bg-jd-purple text-xs px-2 py-1"
+                            onClick={() => handleStatusChange(request.id, "In Process")}
+                          >
+                            Accept Request
+                          </Button>
+                        </div>
                       ) : (
                         <span className={`px-2 py-1 rounded text-xs ${
                           request.status === "Pending" ? "bg-jd-orange/20 text-jd-orange" :
                           request.status === "In Process" ? "bg-blue-500/20 text-blue-500" :
-                          request.status === "Approved" ? "bg-green-500/20 text-green-500" :
+                          request.status === "Completed" ? "bg-green-500/20 text-green-500" :
                           "bg-red-500/20 text-red-500"
                         }`}>
                           {request.status}
                         </span>
+                      )}
+                      {request.lastStatusUpdateTime && (
+                        <div className="flex items-center gap-1 mt-1 text-xs text-jd-mutedText">
+                          <Clock size={12} />
+                          <span>Updated: {request.lastStatusUpdateTime}</span>
+                        </div>
                       )}
                     </td>
                     <td className="px-4 py-4 text-sm">
