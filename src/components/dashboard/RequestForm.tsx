@@ -27,6 +27,10 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
     title: "",
     description: "",
     department: "",
+    type: "request", // New field: can be 'request' or 'project'
+    startDate: "",
+    endDate: "",
+    priority: "medium",
   });
 
   const handleChange = (
@@ -40,6 +44,14 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
     setFormData((prev) => ({ ...prev, department: value }));
   };
 
+  const handleTypeChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, type: value }));
+  };
+
+  const handlePriorityChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, priority: value }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -48,11 +60,11 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // Get existing requests or initialize an empty array
+      // Get existing requests
       const existingRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
       
-      // Create new request
-      const newRequest = {
+      // Create new request/project
+      const newItem = {
         id: `#${Math.floor(100000 + Math.random() * 900000)}`,
         title: formData.title,
         department: formData.department,
@@ -60,10 +72,16 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         dateCreated: new Date().toLocaleDateString("en-GB"),
         creator: user?.username || "user",
         description: formData.description,
+        type: formData.type,
+        ...(formData.type === "project" && {
+          startDate: formData.startDate,
+          endDate: formData.endDate,
+          priority: formData.priority,
+        }),
       };
       
-      // Add the new request to the array
-      const updatedRequests = [newRequest, ...existingRequests];
+      // Add the new item to the array
+      const updatedRequests = [newItem, ...existingRequests];
       
       // Save back to localStorage
       localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
@@ -73,12 +91,21 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         title: "",
         description: "",
         department: "",
+        type: "request",
+        startDate: "",
+        endDate: "",
+        priority: "medium",
       });
 
       // Call the success callback
       if (onSuccess) {
         onSuccess();
       }
+
+      toast({
+        title: `${formData.type === 'project' ? 'Project' : 'Request'} created`,
+        description: `Your ${formData.type} has been successfully created.`,
+      });
     } catch (error) {
       toast({
         title: "Submission failed",
@@ -93,13 +120,32 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="title">Request Title</Label>
+        <Label htmlFor="type">Type</Label>
+        <Select
+          value={formData.type}
+          onValueChange={handleTypeChange}
+          required
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="request">Request</SelectItem>
+            <SelectItem value="project">Project</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="title">
+          {formData.type === 'project' ? 'Project Title' : 'Request Title'}
+        </Label>
         <Input
           id="title"
           name="title"
           value={formData.title}
           onChange={handleChange}
-          placeholder="Enter a brief title for your request"
+          placeholder={`Enter a brief title for your ${formData.type}`}
           required
         />
       </div>
@@ -124,6 +170,53 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         </Select>
       </div>
 
+      {formData.type === 'project' && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="startDate">Start Date</Label>
+              <Input
+                id="startDate"
+                name="startDate"
+                type="date"
+                value={formData.startDate}
+                onChange={handleChange}
+                required={formData.type === 'project'}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="endDate">End Date</Label>
+              <Input
+                id="endDate"
+                name="endDate"
+                type="date"
+                value={formData.endDate}
+                onChange={handleChange}
+                required={formData.type === 'project'}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="priority">Priority</Label>
+            <Select
+              value={formData.priority}
+              onValueChange={handlePriorityChange}
+              required={formData.type === 'project'}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select priority" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </>
+      )}
+
       <div className="space-y-2">
         <Label htmlFor="description">Description</Label>
         <Textarea
@@ -131,14 +224,14 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
           name="description"
           value={formData.description}
           onChange={handleChange}
-          placeholder="Provide details about your request"
+          placeholder={`Provide details about your ${formData.type}`}
           rows={4}
           required
         />
       </div>
 
       <Button type="submit" className="w-full bg-jd-purple hover:bg-jd-darkPurple" disabled={isSubmitting}>
-        {isSubmitting ? "Submitting..." : "Submit Request"}
+        {isSubmitting ? "Submitting..." : `Submit ${formData.type === 'project' ? 'Project' : 'Request'}`}
       </Button>
     </form>
   );
