@@ -106,8 +106,16 @@ const Profile = () => {
     }
   };
 
-  // Filter requests for current user
-  const userRequests = requests.filter((r: any) => r.creator === user?.username);
+  // Filter requests for current user - For projects, only after all needed users accepted, show to all participants.
+  const isProjectReadyForProfile = (r: any) =>
+    r.type === "project" && r.status === "In Process" && r.usersAccepted >= r.usersNeeded && r.participants && r.participants.includes(user?.username);
+
+  // All requests the user created
+  const userRequests = requests.filter((r: any) =>
+    (r.creator === user?.username && (!r.type || r.type === "request")) ||
+    isProjectReadyForProfile(r) ||
+    (r.type === "request" && r.creator === user?.username)
+  );
 
   // Get archived projects (admin only)
   const archivedProjects = requests.filter(
@@ -116,23 +124,10 @@ const Profile = () => {
     (user?.role === "admin" ? r.department === user?.department : r.creator === user?.username)
   );
 
-  // Get accepted requests/projects (in process)
-  const acceptedItems = requests.filter(
-    (r: any) => {
-      // For regular requests: show if status is "In Process" and created by current user
-      if (r.type === "request") {
-        return r.status === "In Process" && r.creator === user?.username;
-      }
-      
-      // For projects: Only show projects where all required users have accepted
-      if (r.type === "project") {
-        return r.status === "In Process" && 
-               r.creator === user?.username &&
-               r.usersAccepted >= r.usersNeeded;
-      }
-      
-      return false;
-    }
+  // Accepted projects -- only after all participants joined and user is a participant
+  const acceptedItems = requests.filter((r: any) =>
+    (r.type === "project" && r.status === "In Process" && r.usersAccepted >= r.usersNeeded && r.participants?.includes(user?.username)) ||
+    (r.type === "request" && r.status === "In Process" && r.creator === user?.username)
   );
 
   // Get history items (completed or rejected)
@@ -184,31 +179,55 @@ const Profile = () => {
     });
   };
 
-  // Handle mark as completed
+  // When user marks as completed in a project, mark their completion; update to "Completed" only after all users have marked completed.
   const handleMarkCompleted = (itemId: string) => {
     const now = new Date();
-    const updatedRequests = requests.map((r: any) => 
-      r.id === itemId ? { 
-        ...r, 
-        status: "Completed", 
-        lastStatusUpdate: now.toISOString(),
-        lastStatusUpdateTime: now.toLocaleTimeString()
-      } : r
-    );
+    const updatedRequests = requests.map((r: any) => {
+      if (r.id === itemId) {
+        // Only for projects: Mark completed for user, but only set global status when all are done
+        if (r.type === "project") {
+          const participantsCompleted = Array.isArray(r.participantsCompleted)
+            ? [...r.participantsCompleted]
+            : [];
+          if (!participantsCompleted.includes(user?.username)) {
+            participantsCompleted.push(user?.username);
+          }
+          // If all have marked completed, set status
+          if (participantsCompleted.length === r.participants.length) {
+            return {
+              ...r,
+              status: "Completed",
+              lastStatusUpdate: now.toISOString(),
+              lastStatusUpdateTime: now.toLocaleTimeString(),
+              participantsCompleted,
+            };
+          }
+          return {
+            ...r,
+            participantsCompleted,
+          };
+        }
+        // Regular requests logic
+        return {
+          ...r,
+          status: "Completed",
+          lastStatusUpdate: now.toISOString(),
+          lastStatusUpdateTime: now.toLocaleTimeString(),
+        };
+      }
+      return r;
+    });
     setRequests(updatedRequests);
     localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
-    
     toast({
       title: "Marked as Completed",
       description: "The item has been marked as completed successfully.",
     });
   };
 
-  // Handle abandon (mark as rejected) - only for requests, not projects
+  // Abandon button should be disabled for projects
   const handleAbandon = (itemId: string) => {
     const item = requests.find((r: any) => r.id === itemId);
-    
-    // Don't allow abandoning projects
     if (item && item.type === "project") {
       toast({
         title: "Cannot abandon project",
@@ -475,6 +494,7 @@ const Profile = () => {
                               variant="destructive"
                               className="flex items-center gap-1"
                               onClick={() => handleAbandon(item.id)}
+                              disabled={item.type === "project"}
                             >
                               <X size={16} />
                               Abandon

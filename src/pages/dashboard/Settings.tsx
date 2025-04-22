@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -402,70 +401,13 @@ const Settings = () => {
             </div>
           </div>
         </TabsContent>
-        
+
         <TabsContent value="notifications" className="space-y-6 mt-6">
-          <div className="bg-jd-card rounded-lg p-6">
-            <h3 className="text-xl font-medium mb-6">Notification Preferences</h3>
-            
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Email Notifications</Label>
-                  <div className="text-sm text-jd-mutedText">
-                    Receive notifications via email
-                  </div>
-                </div>
-                <Switch 
-                  checked={notificationSettings.emailNotifications}
-                  onCheckedChange={() => handleNotificationToggle("emailNotifications")}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Request Updates</Label>
-                  <div className="text-sm text-jd-mutedText">
-                    Get notified about updates to your requests
-                  </div>
-                </div>
-                <Switch 
-                  checked={notificationSettings.requestUpdates}
-                  onCheckedChange={() => handleNotificationToggle("requestUpdates")}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Department Announcements</Label>
-                  <div className="text-sm text-jd-mutedText">
-                    Receive notifications about department announcements
-                  </div>
-                </div>
-                <Switch 
-                  checked={notificationSettings.departmentAnnouncements}
-                  onCheckedChange={() => handleNotificationToggle("departmentAnnouncements")}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Mention Alerts</Label>
-                  <div className="text-sm text-jd-mutedText">
-                    Get notified when someone mentions you
-                  </div>
-                </div>
-                <Switch 
-                  checked={notificationSettings.mentionAlerts}
-                  onCheckedChange={() => handleNotificationToggle("mentionAlerts")}
-                />
-              </div>
-              
-              <Button 
-                onClick={handleUpdateNotifications}
-                className="mt-2 bg-jd-purple hover:bg-jd-darkPurple"
-              >
-                Save Notification Settings
-              </Button>
+          <div className="bg-jd-card rounded-lg p-6 flex flex-col items-center">
+            <h3 className="text-xl font-medium mb-2">Notifications</h3>
+            <div className="text-jd-mutedText text-center mb-4">
+              Notifications settings are currently unavailable. <br />
+              <span className="font-semibold">Coming Soon</span>
             </div>
           </div>
         </TabsContent>
