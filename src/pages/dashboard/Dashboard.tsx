@@ -4,7 +4,14 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import RecentActivities from "@/components/dashboard/RecentActivities";
 import StatCard from "@/components/dashboard/StatCard";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogHeader, 
+  DialogTitle,
+  DialogTrigger 
+} from "@/components/ui/dialog";
 import RequestForm from "@/components/dashboard/RequestForm";
 
 const Dashboard = () => {
