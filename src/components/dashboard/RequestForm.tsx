@@ -165,7 +165,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
                   </SelectItem>
                 ))
               ) : (
-                <SelectItem value="" disabled>
+                <SelectItem value="no-projects" disabled>
                   No projects exist at this moment
                 </SelectItem>
               )}
