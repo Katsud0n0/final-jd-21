@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import DemoCredentials from "./DemoCredentials";
 
 const Login = () => {
   const { login } = useAuth();
@@ -97,6 +98,8 @@ const Login = () => {
           </Link>
         </p>
       </div>
+      
+      <DemoCredentials />
     </div>
   );
 };

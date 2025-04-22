@@ -7,7 +7,7 @@ interface DepartmentCardProps {
   id: string;
   name: string;
   description: string;
-  icon: string;
+  icon: string | JSX.Element;
   color: string;
   requestCount: number;
 }
@@ -30,7 +30,7 @@ const DepartmentCard = ({
               `bg-department-${id}`
             )}
           >
-            {icon}
+            {typeof icon === 'string' ? icon : icon}
           </div>
           <div>
             <h3 className="font-medium">{name}</h3>

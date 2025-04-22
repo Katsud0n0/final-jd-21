@@ -10,6 +10,7 @@ type User = {
   department: string;
   email: string;
   phone?: string;
+  role: "admin" | "client";
 };
 
 interface AuthContextType {
@@ -44,14 +45,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
       
+      // Check for predefined admin accounts
+      const email = username.includes('@') ? username : `${username.toLowerCase()}@jdframeworks.com`;
+      const isAdmin = email.endsWith('@water.com') || 
+                     email.endsWith('@electricity.com') || 
+                     email.endsWith('@health.com') || 
+                     email.endsWith('@education.com') || 
+                     email.endsWith('@sanitation.com') || 
+                     email.endsWith('@publicworks.com') || 
+                     email.endsWith('@transport.com') || 
+                     email.endsWith('@urban.com') || 
+                     email.endsWith('@environment.com') || 
+                     email.endsWith('@finance.com');
+      
+      // Determine department from email
+      let department = "General";
+      if (email.includes('@water.')) department = "Water Supply";
+      else if (email.includes('@electricity.')) department = "Electricity";
+      else if (email.includes('@health.')) department = "Health";
+      else if (email.includes('@education.')) department = "Education";
+      else if (email.includes('@sanitation.')) department = "Sanitation";
+      else if (email.includes('@publicworks.')) department = "Public Works";
+      else if (email.includes('@transport.')) department = "Transportation";
+      else if (email.includes('@urban.')) department = "Urban Development";
+      else if (email.includes('@environment.')) department = "Environment";
+      else if (email.includes('@finance.')) department = "Finance";
+      
       // Mock user data (in a real app, this would come from your API)
       const userData: User = {
         id: "user-123",
         username: username.toLowerCase(),
-        fullName: username,
-        department: "Education",
-        email: `${username.toLowerCase()}@jdframeworks.com`,
-        phone: "+91 9876543210"
+        fullName: username.split('@')[0].charAt(0).toUpperCase() + username.split('@')[0].slice(1),
+        department: department,
+        email: email,
+        phone: "+91 9876543210",
+        role: isAdmin ? "admin" : "client"
       };
       
       localStorage.setItem("jd-user", JSON.stringify(userData));
@@ -59,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       toast({
         title: "Login successful",
-        description: "Welcome back!",
+        description: `Welcome back, ${userData.role}!`,
       });
       
       navigate("/dashboard");
@@ -80,13 +108,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
       
+      const email = username.includes('@') ? username : `${username.toLowerCase()}@jdframeworks.com`;
+      const isAdmin = email.endsWith('@water.com') || 
+                     email.endsWith('@electricity.com') || 
+                     email.endsWith('@health.com') || 
+                     email.endsWith('@education.com') || 
+                     email.endsWith('@sanitation.com') || 
+                     email.endsWith('@publicworks.com') || 
+                     email.endsWith('@transport.com') || 
+                     email.endsWith('@urban.com') || 
+                     email.endsWith('@environment.com') || 
+                     email.endsWith('@finance.com');
+      
       // Mock user registration
       const userData: User = {
         id: `user-${Date.now()}`,
         username: username.toLowerCase(),
         fullName,
         department,
-        email: `${username.toLowerCase()}@jdframeworks.com`,
+        email: email,
+        role: isAdmin ? "admin" : "client"
       };
       
       localStorage.setItem("jd-user", JSON.stringify(userData));

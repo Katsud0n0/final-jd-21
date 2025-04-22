@@ -47,7 +47,7 @@ interface Request {
   archived?: boolean;
 }
 
-const statusOptions = ["Pending", "Approved", "Rejected"];
+const statusOptions = ["Pending", "In Process", "Approved", "Rejected"];
 
 const Requests = () => {
   const { toast } = useToast();
@@ -160,10 +160,18 @@ const Requests = () => {
 
   // Check if user can delete a specific request
   const canDeleteRequest = (request: Request) => {
+    // Admin can delete any request
+    if (user?.role === "admin") return true;
+    // Regular user can only delete their own requests
     return user?.username === request.creator;
   };
 
-  // Filter requests based on search term, status filter, and type filter
+  // Check if user can edit the status of a request
+  const canEditStatus = (request: Request) => {
+    return user?.role === "admin";
+  };
+
+  // Filter requests based on search term, status filter, type filter, and user role
   const filteredRequests = requests.filter(request => {
     const matchesSearch = request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          request.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -180,7 +188,10 @@ const Requests = () => {
     // Don't show archived projects in main view
     const isVisible = request.type !== "project" || !request.archived;
     
-    return matchesSearch && matchesStatus && matchesType && isVisible;
+    // Admin can see all requests, client can only see their own
+    const matchesPermission = user?.role === "admin" || request.creator === user?.username;
+    
+    return matchesSearch && matchesStatus && matchesType && isVisible && matchesPermission;
   });
 
   return (
@@ -330,21 +341,32 @@ const Requests = () => {
                     <td className="px-4 py-4 text-sm">{request.dateCreated}</td>
                     <td className="px-4 py-4 text-sm">{request.creator}</td>
                     <td className="px-4 py-4">
-                      <Select
-                        value={request.status}
-                        onValueChange={(value) => handleStatusChange(request.id, value)}
-                      >
-                        <SelectTrigger className="h-8 w-36">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {statusOptions.map(status => (
-                            <SelectItem key={status} value={status}>
-                              {status}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {canEditStatus(request) ? (
+                        <Select
+                          value={request.status}
+                          onValueChange={(value) => handleStatusChange(request.id, value)}
+                        >
+                          <SelectTrigger className="h-8 w-36">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {statusOptions.map(status => (
+                              <SelectItem key={status} value={status}>
+                                {status}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          request.status === "Pending" ? "bg-jd-orange/20 text-jd-orange" :
+                          request.status === "In Process" ? "bg-blue-500/20 text-blue-500" :
+                          request.status === "Approved" ? "bg-green-500/20 text-green-500" :
+                          "bg-red-500/20 text-red-500"
+                        }`}>
+                          {request.status}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-4 text-sm">
                       {request.type === "project" ? (
@@ -359,7 +381,7 @@ const Requests = () => {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex space-x-2">
-                        {request.type === "project" && canDeleteRequest(request) && (
+                        {request.type === "project" && (user?.role === "admin" || canDeleteRequest(request)) && (
                           <Button
                             variant="ghost"
                             size="icon"

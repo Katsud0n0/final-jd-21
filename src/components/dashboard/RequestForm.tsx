@@ -84,12 +84,13 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         id: `#${Math.floor(100000 + Math.random() * 900000)}`,
         title: formData.title,
         department: formData.department,
-        status: "Pending",
+        status: "Pending", // Always start with Pending status
         dateCreated: new Date().toLocaleDateString("en-GB"),
         creator: user?.username || "user",
         description: formData.description,
         type: formData.type,
         expirationDate: expirationDate.toISOString(),
+        creatorRole: user?.role || "client", // Save the role for permission checking
         ...(formData.type === "project" && {
           priority: formData.priority,
           archived: false,

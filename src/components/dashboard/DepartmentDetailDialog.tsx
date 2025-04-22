@@ -16,11 +16,11 @@ interface DepartmentDetailDialogProps {
   id: string;
   name: string;
   description: string;
-  icon: string;
+  icon: string | JSX.Element;
   color: string;
 }
 
-const DepartmentDetailDialog = ({ id, name, description, color }: DepartmentDetailDialogProps) => {
+const DepartmentDetailDialog = ({ id, name, description, icon, color }: DepartmentDetailDialogProps) => {
   const navigate = useNavigate();
   
   // Find department manager
@@ -43,8 +43,8 @@ const DepartmentDetailDialog = ({ id, name, description, color }: DepartmentDeta
       </DialogTrigger>
       <DialogContent className="bg-jd-card border-jd-card max-w-lg">
         <DialogHeader>
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white bg-${color} mb-4`}>
-            {name[0]}
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white bg-department-${id} mb-4`}>
+            {typeof icon === 'string' ? name[0] : icon}
           </div>
           <DialogTitle className="text-xl">{name} Department</DialogTitle>
           <DialogDescription className="text-jd-mutedText">

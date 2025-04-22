@@ -11,11 +11,17 @@ This project is developed as a college project. It is fully functional in its cu
 ## ✨ Features
 
 - **Dashboard:** Visual overview of key statistics, including department success rates, inter-department collaboration charts, and project statuses.
-- **Department Management:** View and analyze collaboration between various departments.
+- **Department Management:** View and analyze collaboration between various departments with appropriate department icons.
 - **Team Management:** See and manage the list of team members (easily extensible).
-- **Requests:** Users can create, view, and (if they are the creator) delete their own requests.
+- **Role-Based Access:**
+  - **Admin role:** Can view all requests/projects, change status (Pending, In Process, Approved, Rejected), archive projects, delete any submission
+  - **Client role:** Can only view their own requests/projects, no editing permissions
+- **Status Management:** Track requests through Pending, In Process, Approved, or Rejected states
+- **Requests & Projects:** Toggle between viewing Requests and Projects with tabbed interface
+- **Archived Projects:** Admins can archive projects to keep the main interface clean
 - **Profile & Settings:** Each user can manage their profile and customize basic settings.
 - **Landing Page:** Dynamic landing page that adapts based on login status.
+- **Pre-Configured Department Logins:** Admin accounts for each department (Water Supply, Electricity, Health, etc.)
 - **Notifications (coming soon):** Notifications feature is planned for a future update.
 
 All data is **persisted locally using your browser's localStorage** for requests and uses in-memory mock data for charts and analysis.
@@ -53,7 +59,44 @@ You do **NOT** need to connect a backend for this college project. All demo and 
 
 ---
 
-## 💡 (Optional) How To Connect SQLite Backend
+## 💡 Role-Based System & SQLite Backend Integration
+
+### Role-Based System Explanation
+
+The app includes a complete role-based viewing system:
+
+- **Admin Users:**
+  - Can view all requests and projects across departments
+  - Can change the status of any request (Pending, In Process, Approved, Rejected)
+  - Can archive projects to hide them from the main view
+  - Can delete any submission
+  - Have access to special views for department management
+
+- **Client Users:**
+  - Can only view their own submissions
+  - Cannot modify status, archive, or delete other users' requests
+  - See request/project status in read-only mode
+
+For demo purposes, the following login credentials are available:
+- **Admin:** admin@[department].com (e.g., admin@water.com, admin@health.com)
+- **Client:** Any email not matching the admin pattern
+
+### Can I Run This With SQLite Locally?
+
+Yes! This application is designed to work with a local SQLite database if needed. The current implementation uses localStorage for simplicity, but you can connect a SQLite backend for more robust data persistence.
+
+Benefits of adding SQLite:
+- **Persistent storage** across browser sessions
+- **Multi-user access** for true role-based authentication
+- **Robust data relationships** between departments, users, and requests
+- **Query capabilities** for advanced reporting
+
+The repository includes:
+1. `scripts/import_excel_data.py` - A script to import initial data
+2. SQL schema examples (in comments in `src/data/collaboration-data.ts`)
+3. Instructions for setting up Express.js with SQLite
+
+### (Optional) How To Connect SQLite Backend
 
 **You only need this if you want real backend data! The project works fine with mock data for college submissions.**
 

@@ -45,8 +45,8 @@ const Departments = () => {
           <div key={dept.id} className="bg-jd-card rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white bg-${dept.color} mr-3`}>
-                  {dept.icon}
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white bg-department-${dept.id} mr-3`}>
+                  {dept.iconComponent ? <dept.iconComponent size={20} /> : dept.icon}
                 </div>
                 <div>
                   <h3 className="font-medium">{dept.name}</h3>
@@ -57,7 +57,7 @@ const Departments = () => {
                 id={dept.id}
                 name={dept.name}
                 description={dept.description}
-                icon={dept.icon}
+                icon={dept.iconComponent ? <dept.iconComponent size={20} /> : dept.icon}
                 color={dept.color}
               />
             </div>
