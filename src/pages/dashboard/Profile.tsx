@@ -106,15 +106,12 @@ const Profile = () => {
     }
   };
 
-  // Filter requests for current user - For projects, only after all needed users accepted, show to all participants.
-  const isProjectReadyForProfile = (r: any) =>
-    r.type === "project" && r.status === "In Process" && r.usersAccepted >= r.usersNeeded && r.participants && r.participants.includes(user?.username);
-
-  // All requests the user created
+  // Filter requests for current user - For projects, show all items user has accepted
   const userRequests = requests.filter((r: any) =>
-    (r.creator === user?.username && (!r.type || r.type === "request")) ||
-    isProjectReadyForProfile(r) ||
-    (r.type === "request" && r.creator === user?.username)
+    // Show all requests created by the user
+    r.creator === user?.username ||
+    // Or if user is part of a project via the acceptedBy array
+    (r.type === "project" && r.acceptedBy && Array.isArray(r.acceptedBy) && r.acceptedBy.includes(user?.username))
   );
 
   // Get archived projects (admin only)
@@ -124,15 +121,20 @@ const Profile = () => {
     (user?.role === "admin" ? r.department === user?.department : r.creator === user?.username)
   );
 
-  // Accepted projects -- only after all participants joined and user is a participant
+  // Accepted projects -- show all projects where the user has accepted (is in acceptedBy array)
   const acceptedItems = requests.filter((r: any) =>
-    (r.type === "project" && r.status === "In Process" && r.usersAccepted >= r.usersNeeded && r.participants?.includes(user?.username)) ||
+    // For projects: Show if user is in acceptedBy array AND the project is In Process
+    (r.type === "project" && r.status === "In Process" && 
+     r.acceptedBy && Array.isArray(r.acceptedBy) && r.acceptedBy.includes(user?.username)) ||
+    // For requests: Show if user created it AND it's In Process
     (r.type === "request" && r.status === "In Process" && r.creator === user?.username)
   );
 
   // Get history items (completed or rejected)
   const historyItems = requests.filter(
-    (r: any) => (r.status === "Completed" || r.status === "Rejected") && r.creator === user?.username
+    (r: any) => (r.status === "Completed" || r.status === "Rejected") && 
+    (r.creator === user?.username || 
+     (r.type === "project" && r.acceptedBy && Array.isArray(r.acceptedBy) && r.acceptedBy.includes(user?.username)))
   );
 
   // Calculate stats
@@ -193,7 +195,9 @@ const Profile = () => {
             participantsCompleted.push(user?.username);
           }
           // If all have marked completed, set status
-          if (participantsCompleted.length === r.participants.length) {
+          // We need to check against all acceptedBy users (participants)
+          const acceptedUsers = Array.isArray(r.acceptedBy) ? r.acceptedBy : [];
+          if (participantsCompleted.length === acceptedUsers.length) {
             return {
               ...r,
               status: "Completed",

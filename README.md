@@ -3,7 +3,7 @@
 
 ## 📚 Project Overview
 
-**JD Frameworks** is an advanced dashboard platform for realistic department/project management with full cross-role collaboration. This README now reflects:
+**JD Frameworks** is an advanced dashboard platform for realistic department/project management with full cross-role collaboration. This README reflects:
 - Exact logic for requests and projects, including the required user interaction flow  
 - Special project and profile behaviors
 - Privacy features
@@ -24,18 +24,17 @@
 - **Profile/Request sync logic:**  
   - When creating project requests, the **creator is automatically included** in the list of participants  
   - Projects require a minimum of 2 and a maximum of 5 users (including creator)  
-  - Projects are visible in all participants’ profiles only **after all required users have accepted**  
-  - All users (creator + accepted) can mark project as complete; project is only “Completed” when everyone has marked complete  
+  - Projects are visible in all participants' profiles (both creator and all who accept)  
+  - All users (creator + accepted) can mark project as complete; project is only "Completed" when everyone has marked complete  
   - Projects **cannot be abandoned** by any user after accepting (Abandon button is disabled for projects)
 
 ### Project System
 - Projects require 2–5 users **(including the creator!)**
 - The project creator is automatically counted as the first participant
-- All participants see the project in their profile tab once required users have accepted
-- Projects only appear on the profile page after all users have accepted; before that, they do not appear for anyone except possibly the creator
+- All participants (creator + all who accept) see the project in their profile tab after accepting
 - Projects cannot be abandoned once accepted (no "Abandon" option at any time)
 - Each participant must independently mark the project as "Completed" in their profile; project status updates to "Completed" only when **all** do so
-- Request expiration and archiving operates as before;
+- Request expiration and archiving operates as before
 - Only admins can access "Clear All Requests" and archived projects in their profile
 
 ### Role-Based Access
@@ -52,13 +51,13 @@
   - View own submissions
   - Mark projects as complete
   - Cannot abandon or modify projects after accepting
-  - No access to archived projects or “Clear All Requests” option
+  - No access to archived projects or "Clear All Requests" option
 
 ### Profile & Settings
 - Privacy settings management (fully functional)
 - Notification Preferences: "Coming Soon"
 - Settings page: All settings except Blocking & Banning + Notifications tab work 
-- Project completion logic is “all users must complete” to set status to completed
+- Project completion logic is "all users must complete" to set status to completed
 
 ## 🗂️ Data Storage Options
 
@@ -163,4 +162,3 @@ npm run dev
 
 **All user profile, requests, and project flows (including admin/client permission enforcement and proper project logic) are now reflected in this README.**  
 For help, contact [Lovable support](https://lovable.dev).
-
