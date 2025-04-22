@@ -48,9 +48,11 @@ interface Request {
   archivedAt?: string;
   createdAt?: string;
   lastStatusUpdate?: string;
-  acceptedBy?: string;
+  acceptedBy?: string[] | string;
   isExpired?: boolean;
   lastStatusUpdateTime?: string;
+  usersNeeded?: number;
+  usersAccepted?: number;
 }
 
 const statusOptions = ["Pending", "In Process", "Completed", "Rejected"];
@@ -64,6 +66,8 @@ const Requests = () => {
   const [requestToDelete, setRequestToDelete] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
+  const [projectToAccept, setProjectToAccept] = useState<string | null>(null);
+  const [acceptDialogOpen, setAcceptDialogOpen] = useState(false);
 
   useEffect(() => {
     // Load requests from localStorage
@@ -83,6 +87,16 @@ const Requests = () => {
     if (storedRequests) {
       setRequests(JSON.parse(storedRequests));
     }
+  };
+
+  // Clear all requests from localStorage (as requested by user)
+  const clearAllRequests = () => {
+    localStorage.removeItem("jd-requests");
+    setRequests([]);
+    toast({
+      title: "All requests cleared",
+      description: "All requests have been cleared from the system.",
+    });
   };
 
   // Function to check for expired requests
@@ -176,17 +190,46 @@ const Requests = () => {
   };
 
   const handleStatusChange = (requestId: string, newStatus: string) => {
+    if (!user) return;
+    
     const now = new Date();
     
-    const updatedRequests = requests.map(r => 
-      r.id === requestId ? { 
-        ...r, 
-        status: newStatus, 
-        lastStatusUpdate: now.toISOString(),
-        lastStatusUpdateTime: now.toLocaleTimeString(),
-        ...(newStatus === "In Process" && user && { acceptedBy: user.username })
-      } : r
-    );
+    // Find the request we're updating
+    const requestToUpdate = requests.find(r => r.id === requestId);
+    
+    // Don't allow status change if request is already completed or rejected
+    if (requestToUpdate && (requestToUpdate.status === "Completed" || requestToUpdate.status === "Rejected")) {
+      toast({
+        title: "Status cannot be changed",
+        description: "Completed or rejected requests cannot have their status changed.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const updatedRequests = requests.map(r => {
+      if (r.id === requestId) {
+        const updatedRequest = { 
+          ...r, 
+          status: newStatus, 
+          lastStatusUpdate: now.toISOString(),
+          lastStatusUpdateTime: now.toLocaleTimeString(),
+        };
+        
+        // Handle "In Process" status for regular requests
+        if (newStatus === "In Process" && r.type === "request") {
+          // If it's a string (backward compatibility), convert to array
+          const currentAcceptedBy = Array.isArray(r.acceptedBy) ? r.acceptedBy : [];
+          
+          if (!currentAcceptedBy.includes(user.username)) {
+            updatedRequest.acceptedBy = [...currentAcceptedBy, user.username];
+          }
+        }
+        
+        return updatedRequest;
+      }
+      return r;
+    });
     
     setRequests(updatedRequests);
     localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
@@ -229,11 +272,96 @@ const Requests = () => {
     }
   };
 
+  // Open the accept confirmation dialog for a project
+  const handleAcceptProject = (request: Request) => {
+    setProjectToAccept(request.id);
+    setAcceptDialogOpen(true);
+  };
+
+  // Handle project acceptance after confirmation
+  const confirmAcceptProject = () => {
+    if (!projectToAccept || !user) {
+      setAcceptDialogOpen(false);
+      return;
+    }
+
+    const now = new Date();
+    const projectIndex = requests.findIndex(r => r.id === projectToAccept);
+    
+    if (projectIndex === -1) {
+      setAcceptDialogOpen(false);
+      return;
+    }
+
+    const project = requests[projectIndex];
+    
+    // Prepare the acceptedBy array
+    const currentAcceptedBy = Array.isArray(project.acceptedBy) ? project.acceptedBy : [];
+    
+    if (currentAcceptedBy.includes(user.username)) {
+      toast({
+        title: "Already accepted",
+        description: "You have already accepted this project.",
+      });
+      setAcceptDialogOpen(false);
+      return;
+    }
+    
+    // Update the project with the new user acceptance
+    const updatedAcceptedBy = [...currentAcceptedBy, user.username];
+    const updatedUsersAccepted = (project.usersAccepted || 0) + 1;
+    
+    // Check if we've reached the required number of users
+    const shouldUpdateStatus = updatedUsersAccepted >= (project.usersNeeded || 1) && project.status === "Pending";
+    
+    const updatedProject = {
+      ...project,
+      acceptedBy: updatedAcceptedBy,
+      usersAccepted: updatedUsersAccepted,
+      status: shouldUpdateStatus ? "In Process" : project.status,
+      ...(shouldUpdateStatus && {
+        lastStatusUpdate: now.toISOString(),
+        lastStatusUpdateTime: now.toLocaleTimeString(),
+      })
+    };
+    
+    // Update the requests array
+    const updatedRequests = [...requests];
+    updatedRequests[projectIndex] = updatedProject;
+    
+    setRequests(updatedRequests);
+    localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+    
+    toast({
+      title: "Project accepted",
+      description: shouldUpdateStatus 
+        ? "You've accepted the project and it has now moved to In Process status."
+        : "You've accepted the project. It needs more users before it can start.",
+    });
+    
+    setAcceptDialogOpen(false);
+    setProjectToAccept(null);
+  };
+
   // Check if user can accept a request (only clients can accept)
   const canAcceptRequest = (request: Request) => {
-    return user?.role === "client" && 
-           request.status === "Pending" && 
-           !request.archived;
+    if (!user || !request) return false;
+
+    // Basic conditions for acceptance
+    const basicConditions = user.role === "client" && 
+                           request.status === "Pending" && 
+                           !request.archived;
+    
+    if (!basicConditions) return false;
+    
+    // For projects, check if the user hasn't already accepted
+    if (request.type === "project") {
+      const acceptedBy = Array.isArray(request.acceptedBy) ? request.acceptedBy : [];
+      return !acceptedBy.includes(user.username);
+    }
+    
+    // For regular requests
+    return true;
   };
 
   // Check if user can delete a specific request
@@ -285,8 +413,10 @@ const Requests = () => {
       (activeTab === "requests" && request.type === "request") || 
       (activeTab === "projects" && request.type === "project");
     
-    // Don't show archived projects in main view
-    const isVisible = request.type !== "project" || !request.archived;
+    // Don't show archived projects in main view for non-admins
+    const isVisible = request.type !== "project" || 
+                     !request.archived || 
+                     (user?.role === "admin" && request.department === user.department);
     
     return matchesSearch && matchesStatus && matchesType && isVisible;
   });
@@ -470,6 +600,11 @@ const Requests = () => {
                           {(request.status === "Completed" || request.status === "Rejected") && (
                             <span className="text-xs text-jd-mutedText">Expires in 1 day</span>
                           )}
+                          {request.type === "project" && request.usersNeeded && (
+                            <span className="text-xs text-jd-mutedText mt-1">
+                              Accepted by {request.usersAccepted || 0}/{request.usersNeeded} users
+                            </span>
+                          )}
                           {request.lastStatusUpdateTime && (
                             <div className="flex items-center gap-1 mt-1 text-xs text-jd-mutedText">
                               <Clock size={12} />
@@ -550,15 +685,27 @@ const Requests = () => {
                           )}
                         </div>
                         
-                        {/* Move Accept button below the Actions */}
+                        {/* Different acceptance buttons for projects and regular requests */}
                         {canAcceptRequest(request) && (
-                          <Button 
-                            size="sm"
-                            className="bg-jd-purple text-xs"
-                            onClick={() => handleStatusChange(request.id, "In Process")}
-                          >
-                            Accept
-                          </Button>
+                          <>
+                            {request.type === "project" ? (
+                              <Button 
+                                size="sm"
+                                className="bg-jd-purple text-xs"
+                                onClick={() => handleAcceptProject(request)}
+                              >
+                                Accept Project
+                              </Button>
+                            ) : (
+                              <Button 
+                                size="sm"
+                                className="bg-jd-purple text-xs"
+                                onClick={() => handleStatusChange(request.id, "In Process")}
+                              >
+                                Accept
+                              </Button>
+                            )}
+                          </>
                         )}
                       </div>
                     </td>
@@ -576,16 +723,60 @@ const Requests = () => {
         </div>
       </div>
       
-      {/* Coming Soon Notice */}
-      <div className="bg-jd-card rounded-lg p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Ban className="text-jd-purple" size={24} />
-          <h2 className="text-xl font-medium">Blocking and Banning Options</h2>
-        </div>
-        <p className="text-jd-mutedText">
-          Advanced user management features for blocking and banning users will be available soon.
-          Stay tuned for these upcoming security enhancements.
-        </p>
+      {/* Project Acceptance Confirmation Dialog */}
+      <AlertDialog open={acceptDialogOpen} onOpenChange={setAcceptDialogOpen}>
+        <AlertDialogContent className="bg-jd-card border-jd-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Project Acceptance</AlertDialogTitle>
+            <AlertDialogDescription>
+              Once accepted, you cannot abandon this project. You will be responsible for completing your part of the work.
+              
+              Do you want to continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-jd-bg hover:bg-jd-bg/80">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-jd-purple hover:bg-jd-darkPurple"
+              onClick={confirmAcceptProject}
+            >
+              Accept Project
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Clear all requests button (temporary, as requested by user) */}
+      <div className="flex justify-end">
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button 
+              variant="destructive" 
+              className="mt-4"
+            >
+              Clear All Requests
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent className="bg-jd-card border-jd-card">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Clear All Requests</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently remove ALL requests from the system. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="bg-jd-bg hover:bg-jd-bg/80">Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                className="bg-red-600 hover:bg-red-700"
+                onClick={clearAllRequests}
+              >
+                Clear All
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

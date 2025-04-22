@@ -32,6 +32,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
     type: "request",
     relatedProject: "", // New field for linking to existing projects
     priority: "medium",
+    usersNeeded: "1", // New field for number of users needed
   });
 
   useEffect(() => {
@@ -63,6 +64,10 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
 
   const handlePriorityChange = (value: string) => {
     setFormData((prev) => ({ ...prev, priority: value }));
+  };
+  
+  const handleUsersNeededChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, usersNeeded: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -99,9 +104,12 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         createdAt: now.toISOString(), // Add creation timestamp for expiration calculation
         creatorRole: user?.role || "client", // Save the role for permission checking
         isExpired: false, // Not expired by default
+        acceptedBy: [], // Track which users have accepted the project
+        usersAccepted: 0, // Counter for accepted users
         ...(formData.type === "project" && {
           priority: formData.priority,
           archived: false,
+          usersNeeded: parseInt(formData.usersNeeded), // Store as number
         }),
         ...(formData.type === "request" && formData.relatedProject && {
           relatedProject: formData.relatedProject !== "none" ? formData.relatedProject : null,
@@ -122,6 +130,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         type: "request",
         relatedProject: "",
         priority: "medium",
+        usersNeeded: "1",
       });
 
       // Call the success callback
@@ -233,23 +242,45 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
       </div>
 
       {formData.type === 'project' && (
-        <div className="space-y-2">
-          <Label htmlFor="priority">Priority</Label>
-          <Select
-            value={formData.priority}
-            onValueChange={handlePriorityChange}
-            required={formData.type === 'project'}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select priority" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="low">Low</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="priority">Priority</Label>
+            <Select
+              value={formData.priority}
+              onValueChange={handlePriorityChange}
+              required={formData.type === 'project'}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select priority" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="usersNeeded">Number of Users Needed</Label>
+            <Select
+              value={formData.usersNeeded}
+              onValueChange={handleUsersNeededChange}
+              required={formData.type === 'project'}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select number of users needed" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">1 user</SelectItem>
+                <SelectItem value="2">2 users</SelectItem>
+                <SelectItem value="3">3 users</SelectItem>
+                <SelectItem value="4">4 users</SelectItem>
+                <SelectItem value="5">5 users</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </>
       )}
 
       <div className="space-y-2">

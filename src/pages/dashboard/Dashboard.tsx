@@ -10,7 +10,7 @@ import {
   DialogDescription, 
   DialogHeader, 
   DialogTitle,
-  DialogTrigger 
+  DialogTrigger
 } from "@/components/ui/dialog";
 import RequestForm from "@/components/dashboard/RequestForm";
 
@@ -156,6 +156,11 @@ const Dashboard = () => {
                       </span>
                       {(request.status === "Completed" || request.status === "Rejected") && (
                         <span className="text-xs text-jd-mutedText mt-1">Expires in 1 day</span>
+                      )}
+                      {request.type === "project" && request.usersNeeded && (
+                        <span className="text-xs text-jd-mutedText mt-1">
+                          Accepted by {request.usersAccepted || 0}/{request.usersNeeded} users
+                        </span>
                       )}
                     </div>
                   </div>

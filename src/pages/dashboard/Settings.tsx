@@ -1,220 +1,251 @@
 
-import { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import React, { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/components/ui/use-toast";
-import { AlertCircle } from "lucide-react";
+import { Ban, Bell, Lock, ShieldAlert, User } from "lucide-react";
 
 const Settings = () => {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("account");
-  const [formData, setFormData] = useState({
-    username: user?.username || "",
-    fullName: user?.fullName || "",
-    department: user?.department || "",
-    email: user?.email || "",
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
+  const [notifications, setNotifications] = useState({
+    email: true,
+    push: false,
+    requestUpdates: true,
+    projectUpdates: true,
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleProfileUpdate = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Update user in localStorage
-    const currentUser = JSON.parse(localStorage.getItem("jd-user") || "{}");
-    const updatedUser = {
-      ...currentUser,
-      fullName: formData.fullName,
-      email: formData.email,
-    };
-    localStorage.setItem("jd-user", JSON.stringify(updatedUser));
-    
-    toast({
-      title: "Profile updated",
-      description: "Your profile information has been updated successfully.",
-    });
-  };
-
-  const handlePasswordChange = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (formData.newPassword !== formData.confirmPassword) {
-      toast({
-        title: "Passwords don't match",
-        description: "New password and confirmation don't match.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Simulate password change
-    toast({
-      title: "Password changed",
-      description: "Your password has been changed successfully.",
-    });
-    
-    // Reset password fields
-    setFormData((prev) => ({
-      ...prev,
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    }));
-  };
+  const [privacy, setPrivacy] = useState({
+    showProfile: true,
+    showActivity: true,
+  });
 
   return (
-    <div className="space-y-6">
-      <Tabs 
-        defaultValue="account" 
-        value={activeTab}
-        onValueChange={setActiveTab}
-        className="w-full"
-      >
-        <TabsList className="grid w-full grid-cols-3 max-w-md bg-jd-bg">
-          <TabsTrigger value="account">Account</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="security">Security</TabsTrigger>
+    <div className="space-y-8">
+      <h2 className="text-3xl font-bold">Settings</h2>
+      <p className="text-jd-mutedText">Manage your account settings and preferences</p>
+
+      <Tabs defaultValue="general" className="w-full">
+        <TabsList className="grid grid-cols-4 w-full">
+          <TabsTrigger value="general">
+            <User className="mr-2 h-4 w-4" />
+            General
+          </TabsTrigger>
+          <TabsTrigger value="notifications">
+            <Bell className="mr-2 h-4 w-4" />
+            Notifications
+          </TabsTrigger>
+          <TabsTrigger value="privacy">
+            <Lock className="mr-2 h-4 w-4" />
+            Privacy
+          </TabsTrigger>
+          <TabsTrigger value="security">
+            <ShieldAlert className="mr-2 h-4 w-4" />
+            Security
+          </TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="account" className="mt-6">
-          <div className="bg-jd-card rounded-lg p-6">
-            <h3 className="text-xl font-medium mb-2">Profile Information</h3>
-            <p className="text-jd-mutedText mb-6">Update your account details and personal information.</p>
-            
-            <form onSubmit={handleProfileUpdate} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
-                  <Input
-                    id="username"
-                    name="username"
-                    value={formData.username}
-                    className="flex-1"
-                    readOnly
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">Full Name</Label>
-                  <Input
-                    id="fullName"
-                    name="fullName"
-                    value={formData.fullName}
-                    onChange={handleChange}
-                    className="flex-1"
-                  />
-                </div>
+
+        <TabsContent value="general" className="space-y-4 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>General Information</CardTitle>
+              <CardDescription>Update your basic profile details</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1">
+                <Label htmlFor="name">Full Name</Label>
+                <input type="text" id="name" className="w-full rounded p-2 border bg-jd-bg" value="Vardhan" disabled />
+                <p className="text-xs text-jd-mutedText">Managed by your organization</p>
               </div>
-              
-              <div className="space-y-2">
+              <div className="space-y-1">
+                <Label htmlFor="email">Email Address</Label>
+                <input type="email" id="email" className="w-full rounded p-2 border bg-jd-bg" value="vardhan@company.com" disabled />
+                <p className="text-xs text-jd-mutedText">Managed by your organization</p>
+              </div>
+              <div className="space-y-1">
                 <Label htmlFor="department">Department</Label>
-                <Input
-                  id="department"
-                  name="department"
-                  value={formData.department}
-                  readOnly
-                />
+                <input type="text" id="department" className="w-full rounded p-2 border bg-jd-bg" value="IT Support" disabled />
+                <p className="text-xs text-jd-mutedText">Managed by your organization</p>
               </div>
-              
-              <div className="pt-4 border-t border-jd-bg">
-                <h4 className="text-lg font-medium mb-4">Email Address</h4>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Change your email address for communications.</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="user@example.com"
-                    value={formData.email}
-                    onChange={handleChange}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="notifications" className="space-y-4 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Notification Preferences</CardTitle>
+              <CardDescription>Control how you receive notifications</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Delivery Methods</h3>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="email-notifications" className="font-medium">
+                      Email Notifications
+                    </Label>
+                    <p className="text-jd-mutedText text-sm">
+                      Receive notifications via email
+                    </p>
+                  </div>
+                  <Switch
+                    id="email-notifications"
+                    checked={notifications.email}
+                    onCheckedChange={(checked) =>
+                      setNotifications((prev) => ({ ...prev, email: checked }))
+                    }
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="push-notifications" className="font-medium">
+                      Push Notifications
+                    </Label>
+                    <p className="text-jd-mutedText text-sm">
+                      Receive notifications in your browser
+                    </p>
+                  </div>
+                  <Switch
+                    id="push-notifications"
+                    checked={notifications.push}
+                    onCheckedChange={(checked) =>
+                      setNotifications((prev) => ({ ...prev, push: checked }))
+                    }
                   />
                 </div>
               </div>
-              
-              <div className="flex justify-end">
-                <Button type="submit" className="bg-jd-purple hover:bg-jd-darkPurple">
-                  Save Changes
-                </Button>
+
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Notification Types</h3>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="request-updates" className="font-medium">
+                      Request Updates
+                    </Label>
+                    <p className="text-jd-mutedText text-sm">
+                      Get notified when a request's status changes
+                    </p>
+                  </div>
+                  <Switch
+                    id="request-updates"
+                    checked={notifications.requestUpdates}
+                    onCheckedChange={(checked) =>
+                      setNotifications((prev) => ({
+                        ...prev,
+                        requestUpdates: checked,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="project-updates" className="font-medium">
+                      Project Updates
+                    </Label>
+                    <p className="text-jd-mutedText text-sm">
+                      Get notified about changes to projects you're part of
+                    </p>
+                  </div>
+                  <Switch
+                    id="project-updates"
+                    checked={notifications.projectUpdates}
+                    onCheckedChange={(checked) =>
+                      setNotifications((prev) => ({
+                        ...prev,
+                        projectUpdates: checked,
+                      }))
+                    }
+                  />
+                </div>
               </div>
-            </form>
-          </div>
+            </CardContent>
+          </Card>
         </TabsContent>
-        
-        <TabsContent value="notifications" className="mt-6">
-          <div className="bg-jd-card rounded-lg p-6">
-            <h3 className="text-xl font-medium mb-2">Notification Settings</h3>
-            <p className="text-jd-mutedText mb-6">Manage how and when you receive notifications.</p>
-            
-            <div className="bg-jd-bg/50 border border-jd-card/50 rounded-lg p-4 flex items-center">
-              <AlertCircle className="text-jd-purple mr-3" size={24} />
-              <div>
-                <h4 className="font-medium">Coming Soon</h4>
-                <p className="text-sm text-jd-mutedText">
-                  Notification settings will be available in a future update. Stay tuned!
+
+        <TabsContent value="privacy" className="space-y-4 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Privacy Settings</CardTitle>
+              <CardDescription>Control your privacy preferences</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Profile Visibility</h3>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="show-profile" className="font-medium">
+                      Show Profile
+                    </Label>
+                    <p className="text-jd-mutedText text-sm">
+                      Allow others to see your profile information
+                    </p>
+                  </div>
+                  <Switch
+                    id="show-profile"
+                    checked={privacy.showProfile}
+                    onCheckedChange={(checked) =>
+                      setPrivacy((prev) => ({ ...prev, showProfile: checked }))
+                    }
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="show-activity" className="font-medium">
+                      Activity Visibility
+                    </Label>
+                    <p className="text-jd-mutedText text-sm">
+                      Allow others to see your recent activity
+                    </p>
+                  </div>
+                  <Switch
+                    id="show-activity"
+                    checked={privacy.showActivity}
+                    onCheckedChange={(checked) =>
+                      setPrivacy((prev) => ({ ...prev, showActivity: checked }))
+                    }
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="security" className="space-y-4 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Security Settings</CardTitle>
+              <CardDescription>Manage security options and access restrictions</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Account Security</h3>
+                <div>
+                  <Button variant="outline">Change Password</Button>
+                </div>
+                <div>
+                  <Button variant="outline">Enable Two-Factor Authentication</Button>
+                </div>
+              </div>
+              
+              {/* Blocking and Banning Options (moved from Requests tab) */}
+              <div className="bg-jd-bg rounded-lg p-6 mt-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <Ban className="text-jd-purple" size={24} />
+                  <h3 className="text-xl font-medium">Blocking and Banning Options</h3>
+                </div>
+                <p className="text-jd-mutedText mb-4">
+                  Advanced user management features for blocking and banning users will be available soon.
+                  Stay tuned for these upcoming security enhancements.
                 </p>
-              </div>
-            </div>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="security" className="mt-6">
-          <div className="bg-jd-card rounded-lg p-6">
-            <h3 className="text-xl font-medium mb-2">Change Password</h3>
-            <p className="text-jd-mutedText mb-6">Update your password to maintain account security.</p>
-            
-            <form onSubmit={handlePasswordChange} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="currentPassword">Current Password</Label>
-                <Input
-                  id="currentPassword"
-                  name="currentPassword"
-                  type="password"
-                  value={formData.currentPassword}
-                  onChange={handleChange}
-                  required
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <Button variant="outline" disabled>Block User</Button>
+                  <Button variant="outline" disabled>Manage Blocked Users</Button>
+                </div>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="newPassword">New Password</Label>
-                <Input
-                  id="newPassword"
-                  name="newPassword"
-                  type="password"
-                  value={formData.newPassword}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <Input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              
-              <div className="pt-2">
-                <Button type="submit" className="bg-jd-purple hover:bg-jd-darkPurple">
-                  Change Password
-                </Button>
-              </div>
-            </form>
-          </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
