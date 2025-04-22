@@ -24,7 +24,45 @@ const Dashboard = () => {
     if (storedRequests) {
       setRequests(JSON.parse(storedRequests));
     }
+    
+    // Check for expired requests on component mount
+    checkExpiredRequests();
   }, []);
+
+  // Function to check for expired requests
+  const checkExpiredRequests = () => {
+    const now = new Date();
+    const storedRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
+    
+    let updated = false;
+    
+    const updatedRequests = storedRequests.map((req: any) => {
+      // Check for completed/rejected items to mark as expired after 1 day
+      if ((req.status === "Completed" || req.status === "Rejected") && req.lastStatusUpdate) {
+        const statusUpdateDate = new Date(req.lastStatusUpdate);
+        const oneDayLater = new Date(statusUpdateDate);
+        oneDayLater.setDate(oneDayLater.getDate() + 1);
+        
+        if (now > oneDayLater && !req.isExpired) {
+          updated = true;
+          return { ...req, isExpired: true };
+        }
+      } 
+      
+      // Auto-delete expired items
+      if (req.isExpired) {
+        updated = true;
+        return null; // Mark for deletion
+      }
+      
+      return req;
+    }).filter(Boolean); // Remove null items (deleted requests)
+    
+    if (updated) {
+      localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+      setRequests(updatedRequests);
+    }
+  };
 
   const handleRequestSuccess = () => {
     setIsDialogOpen(false);

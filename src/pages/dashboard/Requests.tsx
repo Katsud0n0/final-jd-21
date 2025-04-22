@@ -1,9 +1,9 @@
 
 import { useState, useEffect } from "react";
-import { Trash2, Plus, Archive, Check, X, Clock } from "lucide-react";
+import { Trash2, Plus, Archive, Check, X, Clock, Ban } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import RequestForm from "@/components/dashboard/RequestForm";
 import {
@@ -238,18 +238,27 @@ const Requests = () => {
 
   // Check if user can delete a specific request
   const canDeleteRequest = (request: Request) => {
+    // Not deletable if completed or rejected
+    if (request.status === "Completed" || request.status === "Rejected") {
+      return false;
+    }
+    
     // Admin can delete requests in their department
     if (user?.role === "admin") {
       return user.department === request.department;
     }
+    
     // Regular user can only delete their own requests that are not completed/rejected
-    return user?.username === request.creator && 
-           request.status !== "Completed" && 
-           request.status !== "Rejected";
+    return user?.username === request.creator;
   };
 
   // Check if user can edit the status of a request
   const canEditStatus = (request: Request) => {
+    // Cannot change status if already completed or rejected
+    if (request.status === "Completed" || request.status === "Rejected") {
+      return false;
+    }
+    
     // Only admin of the department can edit status
     return user?.role === "admin" && user?.department === request.department;
   };
@@ -479,7 +488,8 @@ const Requests = () => {
                         )
                       ) : (
                         <span>
-                          {request.status === "Pending" ? "30 days" : "N/A"}
+                          {request.status === "Pending" ? "30 days" : 
+                           (request.status === "Completed" || request.status === "Rejected") ? "1 day" : "N/A"}
                         </span>
                       )}
                     </td>
@@ -529,16 +539,14 @@ const Requests = () => {
                               </AlertDialogContent>
                             </AlertDialog>
                           ) : (
-                            request.status !== "Completed" && request.status !== "Rejected" && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-gray-400 cursor-not-allowed"
-                                disabled={true}
-                              >
-                                <Trash2 size={18} />
-                              </Button>
-                            )
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-gray-400 cursor-not-allowed"
+                              disabled={true}
+                            >
+                              <Trash2 size={18} />
+                            </Button>
                           )}
                         </div>
                         
@@ -566,6 +574,18 @@ const Requests = () => {
             </tbody>
           </table>
         </div>
+      </div>
+      
+      {/* Coming Soon Notice */}
+      <div className="bg-jd-card rounded-lg p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <Ban className="text-jd-purple" size={24} />
+          <h2 className="text-xl font-medium">Blocking and Banning Options</h2>
+        </div>
+        <p className="text-jd-mutedText">
+          Advanced user management features for blocking and banning users will be available soon.
+          Stay tuned for these upcoming security enhancements.
+        </p>
       </div>
     </div>
   );
