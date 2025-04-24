@@ -1,4 +1,3 @@
-
 export interface Request {
   id: string;
   title: string;
@@ -20,7 +19,7 @@ export interface Request {
   lastStatusUpdateTime?: string;
   usersNeeded?: number;
   usersAccepted?: number;
-  participantsCompleted?: string[];
+  participantsCompleted?: string[];  // Added this line to resolve the TypeScript error
 }
 
 export interface UserProfile {
