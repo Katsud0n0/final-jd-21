@@ -53,6 +53,9 @@ const AcceptedItems = ({ acceptedItems, handleMarkCompleted, handleAbandon, hasM
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <h4 className="font-medium">{item.title}</h4>
+                    <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">
+                      {item.type}
+                    </span>
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full">
@@ -79,6 +82,14 @@ const AcceptedItems = ({ acceptedItems, handleMarkCompleted, handleAbandon, hasM
                           <div>
                             <h4 className="text-sm font-medium mb-1">Description:</h4>
                             <p className="text-jd-mutedText text-sm">{item.description}</p>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium mb-1">Accepted By:</h4>
+                            <p className="text-jd-mutedText text-sm">
+                              {Array.isArray(item.acceptedBy) 
+                                ? item.acceptedBy.join(", ") 
+                                : item.acceptedBy || 'Unknown'}
+                            </p>
                           </div>
                         </div>
                       </DialogContent>

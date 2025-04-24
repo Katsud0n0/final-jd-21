@@ -13,10 +13,12 @@ import {
   DialogTrigger
 } from "@/components/ui/dialog";
 import RequestForm from "@/components/dashboard/RequestForm";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Dashboard = () => {
   const [requests, setRequests] = useState<any[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { user } = useAuth();
   
   useEffect(() => {
     // Load requests from localStorage
@@ -75,6 +77,32 @@ const Dashboard = () => {
     }
   };
 
+  // For debugging only - ensure proper structure
+  const fixRequestsStructure = () => {
+    const storedRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
+    
+    // Make sure each request has correct structure
+    const fixedRequests = storedRequests.map((req: any) => {
+      // Ensure acceptedBy is consistent
+      if (req.status === "In Process" && (!req.acceptedBy || req.acceptedBy === true)) {
+        return {
+          ...req,
+          acceptedBy: user?.username || "unknown" // Fix missing acceptedBy
+        };
+      }
+      return req;
+    });
+    
+    localStorage.setItem("jd-requests", JSON.stringify(fixedRequests));
+    setRequests(fixedRequests);
+    console.log("Fixed requests structure:", fixedRequests);
+  };
+
+  useEffect(() => {
+    // Run the fix on initial load
+    fixRequestsStructure();
+  }, [user]);
+
   // Count requests by status
   const totalRequests = requests.length;
   const pendingRequests = requests.filter(r => r.status === "Pending").length;
@@ -83,7 +111,7 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-8">
-      <h2 className="text-2xl font-medium">Welcome back, vardhan</h2>
+      <h2 className="text-2xl font-medium">Welcome back, {user?.username || 'user'}</h2>
       
       {/* Status cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

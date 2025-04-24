@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -14,6 +13,7 @@ import RecentActivity from "@/components/profile/RecentActivity";
 import AcceptedItems from "@/components/profile/AcceptedItems";
 import HistoryItems from "@/components/profile/HistoryItems";
 import ArchivedProjects from "@/components/profile/ArchivedProjects";
+import DebugRequests from "@/components/profile/DebugRequests";
 
 const Profile = () => {
   const { user, logout } = useAuth();
@@ -118,24 +118,57 @@ const Profile = () => {
     (user?.role === "admin" ? r.department === user?.department : r.creator === user?.username)
   );
 
-  // Accepted projects -- show all projects where the user has accepted (is in acceptedBy array) OR requests where the user is acceptedBy
-  const acceptedItems = requests.filter((r: Request) =>
-    // For projects: Show if user is in acceptedBy array AND the project is In Process
-    (r.type === "project" && r.status === "In Process" && 
-     r.acceptedBy && Array.isArray(r.acceptedBy) && r.acceptedBy.includes(user?.username)) ||
-    // For requests: Show if accepted by user AND it's In Process
-    (r.type === "request" && r.status === "In Process" && 
-     ((Array.isArray(r.acceptedBy) && r.acceptedBy.includes(user?.username)) || 
-      r.acceptedBy === user?.username))
-  );
+  // Accepted projects and requests - both as creator and as acceptedBy
+  const acceptedItems = requests.filter((r: Request) => {
+    // In Process status is required for all
+    if (r.status !== "In Process") return false;
+    
+    console.log(`Checking request ${r.id} - ${r.title} - acceptedBy:`, r.acceptedBy);
+    
+    // Project type
+    if (r.type === "project") {
+      // Check if user is in acceptedBy array
+      return r.acceptedBy && Array.isArray(r.acceptedBy) && r.acceptedBy.includes(user?.username || '');
+    }
+    
+    // Request type
+    if (r.type === "request") {
+      // Check if user is the acceptedBy (string) or in acceptedBy array
+      if (typeof r.acceptedBy === 'string') {
+        return r.acceptedBy === user?.username;
+      }
+      
+      if (Array.isArray(r.acceptedBy)) {
+        return r.acceptedBy.includes(user?.username || '');
+      }
+    }
+    
+    return false;
+  });
+
+  console.log("User:", user?.username);
+  console.log("Accepted Items:", acceptedItems);
+  console.log("All Requests:", requests);
 
   // Get history items (completed or rejected)
-  const historyItems = requests.filter(
-    (r: Request) => (r.status === "Completed" || r.status === "Rejected") && 
-    (r.creator === user?.username || 
-     (r.acceptedBy && ((Array.isArray(r.acceptedBy) && r.acceptedBy.includes(user?.username)) || 
-      r.acceptedBy === user?.username)))
-  );
+  const historyItems = requests.filter((r: Request) => {
+    // Must be Completed or Rejected
+    if (r.status !== "Completed" && r.status !== "Rejected") return false;
+    
+    // Show if user created it
+    if (r.creator === user?.username) return true;
+    
+    // Or if user is in acceptedBy (either string or array)
+    if (typeof r.acceptedBy === 'string') {
+      return r.acceptedBy === user?.username;
+    }
+    
+    if (Array.isArray(r.acceptedBy)) {
+      return r.acceptedBy.includes(user?.username || '');
+    }
+    
+    return false;
+  });
 
   // Get recent activity
   const recentActivity = userRequests
@@ -286,6 +319,9 @@ const Profile = () => {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-1">
         <ProfileSidebar user={user} logout={logout} />
+        <div className="mt-4">
+          <DebugRequests />
+        </div>
       </div>
       
       <div className="lg:col-span-2 space-y-6">
