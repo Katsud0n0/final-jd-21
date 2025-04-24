@@ -1,21 +1,34 @@
+
 # JD Frameworks – Backend Implementation Guide
 
-This guide provides the complete setup and implementation code for connecting your JD Frameworks frontend to a SQLite backend.
-
-## Table of Contents
-- [Prerequisites](#prerequisites)
-- [Database Setup](#database-setup)
-- [Express Server Setup](#express-server-setup)
-- [API Endpoints Implementation](#api-endpoints-implementation)
-- [Frontend Integration](#frontend-integration)
-- [Running the Application](#running-the-application)
-
 ## Prerequisites
+
+First, create a new directory for your backend server and initialize a package.json:
+
+```bash
+mkdir jd-frameworks-backend
+cd jd-frameworks-backend
+npm init -y
+```
 
 Install the required dependencies:
 
 ```bash
-npm install sqlite3 express cors body-parser
+npm install sqlite3@latest express@latest cors@latest body-parser@latest dotenv@latest
+```
+
+## Project Structure
+
+Create the following directory structure:
+```
+jd-frameworks-backend/
+├── database/          # SQLite database files
+├── src/              # Source code
+│   ├── routes/       # API route handlers
+│   ├── middleware/   # Express middleware
+│   └── utils/        # Utility functions
+├── setup-database.js # Database initialization
+└── server.js        # Main Express server
 ```
 
 ## Database Setup
@@ -1259,38 +1272,172 @@ export const api = {
 
 ## Running the Application
 
-1. First, install the required dependencies:
-   ```bash
-   npm install sqlite3 express cors body-parser
-   ```
+1. Create `.env` file in your backend project root:
+```
+PORT=3000
+DATABASE_PATH=./database/jd_frameworks.db
+```
 
-2. Create and set up the database:
-   ```bash
-   node setup-database.js
-   ```
+2. Initialize the database:
+```bash
+node setup-database.js
+```
 
 3. Start the Express server:
-   ```bash
-   node server.js
-   ```
+```bash
+node server.js
+```
 
-4. Update your React components to use the API instead of localStorage. For example, replace code like:
-   ```javascript
-   const storedRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
-   ```
+## API Documentation
 
-   with:
-   ```javascript
-   const storedRequests = await api.getRequests();
-   ```
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/users` | GET | Get all users |
+| `/api/users` | POST | Create a new user |
+| `/api/users/:id` | GET | Get a user by ID |
+| `/api/users/:id` | PUT | Update a user |
+| `/api/users/login` | POST | Login a user or create if new |
+| `/api/departments` | GET | Get all departments |
+| `/api/requests` | GET | Get all requests |
+| `/api/requests` | POST | Create a new request |
+| `/api/requests/:id` | PUT | Update a request |
+| `/api/requests/:id` | DELETE | Delete a request |
+| `/api/requests/:id/accept` | POST | Accept a request |
+| `/api/requests/:id/complete` | POST | Mark a request as complete |
+| `/api/requests/:id/abandon` | POST | Abandon a request |
+| `/api/requests/user/:username` | GET | Get requests for a specific user |
+| `/api/requests/filter` | GET | Filter requests by criteria |
+| `/api/requests/check-expiration` | POST | Check and process expired requests |
 
-5. Make sure your frontend application is configured to use the API endpoints.
+## Frontend Integration
 
-The backend now fully supports all the new features:
-- Multiple department selection for projects (3-5 departments)
-- Creator department tracking
-- Enhanced filtering capabilities (status, department, search)
-- Truncated tags with +X more functionality
-- Project/request detail view
+Here's an example of how to integrate the SQLite backend with your React frontend:
 
-With this setup, all the accepted requests will properly appear in the profile tab, filtered by the correct acceptance criteria.
+```typescript
+// src/utils/api.ts
+
+const API_URL = 'http://localhost:3000/api';
+
+export const api = {
+  // User endpoints
+  async getUsers() {
+    const response = await fetch(`${API_URL}/users`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch users');
+    }
+    return await response.json();
+  },
+  
+  async createUser(userData: any) {
+    const response = await fetch(`${API_URL}/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData)
+    });
+    if (!response.ok) {
+      throw new Error('Failed to create user');
+    }
+    return await response.json();
+  },
+  
+  // Request endpoints
+  async getRequests() {
+    const response = await fetch(`${API_URL}/requests`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch requests');
+    }
+    return await response.json();
+  },
+  
+  async createRequest(requestData: any) {
+    const response = await fetch(`${API_URL}/requests`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestData)
+    });
+    if (!response.ok) {
+      throw new Error('Failed to create request');
+    }
+    return await response.json();
+  },
+  
+  async updateRequest(id: string, requestData: any) {
+    const response = await fetch(`${API_URL}/requests/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestData)
+    });
+    if (!response.ok) {
+      throw new Error('Failed to update request');
+    }
+    return await response.json();
+  },
+  
+  // Add other API endpoints as needed...
+};
+
+export default api;
+```
+
+## Error Handling
+
+The backend includes robust error handling. All endpoints return appropriate HTTP status codes:
+
+- 200: Success
+- 201: Created
+- 400: Bad Request
+- 401: Unauthorized
+- 403: Forbidden
+- 404: Not Found
+- 500: Internal Server Error
+
+Each error response includes a descriptive message:
+
+```json
+{
+  "error": "Detailed error message here"
+}
+```
+
+## Security Considerations
+
+1. CORS is enabled but should be configured for your production domain
+2. Input validation is performed on all endpoints
+3. SQL injection is prevented through parameterized queries
+4. Sensitive data is not logged
+
+## Production Deployment
+
+For production deployment:
+
+1. Set appropriate environment variables
+2. Configure CORS for your domain
+3. Use PM2 or similar for process management:
+
+```bash
+npm install -g pm2
+pm2 start server.js --name jd-frameworks-backend
+```
+
+## Troubleshooting
+
+Common issues and solutions:
+
+1. Database connection errors:
+   - Check if the database directory exists
+   - Verify file permissions
+   - Ensure SQLite is installed
+
+2. CORS errors:
+   - Check the allowed origins in server.js
+   - Verify the frontend is making requests to the correct URL
+
+3. Request timeout errors:
+   - Check database indexes
+   - Optimize queries if needed
+
+For detailed logs:
+```bash
+pm2 logs jd-frameworks-backend
+```
+
