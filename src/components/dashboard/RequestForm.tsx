@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { departments } from "@/data/departments";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Check, X } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface RequestFormProps {
   onSuccess?: () => void;
@@ -198,204 +199,206 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="type">Type</Label>
-        <Select
-          value={formData.type}
-          onValueChange={handleTypeChange}
-          required
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="request">Request</SelectItem>
-            <SelectItem value="project">Project</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {formData.type === "request" && (
-        <>
-          <div className="space-y-2">
-            <Label htmlFor="department" className="flex items-center">
-              Required Department <span className="text-red-500 ml-1">*</span>
-            </Label>
-            <Select
-              value={formData.department}
-              onValueChange={handleDepartmentChange}
-              required
-            >
-              <SelectTrigger className={formError ? "border-red-500" : ""}>
-                <SelectValue placeholder="Select department" />
-              </SelectTrigger>
-              <SelectContent>
-                {departments.map((dept) => (
-                  <SelectItem key={dept.id} value={dept.name}>
-                    {dept.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {formError && <p className="text-xs text-red-500">{formError}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="relatedProject">Related Project (Optional)</Label>
-            <Select
-              value={formData.relatedProject}
-              onValueChange={handleProjectChange}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select related project (optional)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {existingProjects.length > 0 ? (
-                  existingProjects.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.title}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem value="no-projects" disabled>
-                    No projects exist at this moment
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-        </>
-      )}
-
-      {formData.type === "project" && (
+    <ScrollArea className="h-[600px] pr-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label className="flex items-center">
-            Required Departments <span className="text-red-500 ml-1">*</span>
-            <span className="text-xs text-jd-mutedText ml-2">
-              (Select 3-5 departments)
-            </span>
-          </Label>
-          <div className="grid grid-cols-2 gap-2 mt-2 p-2 max-h-48 overflow-y-auto border rounded-md">
-            {departments.map((dept) => (
-              <div key={dept.id} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`dept-${dept.id}`}
-                  checked={selectedDepartments.includes(dept.name)}
-                  onCheckedChange={(checked) => 
-                    handleDepartmentCheckboxChange(dept.name, checked as boolean)
-                  }
-                />
-                <label
-                  htmlFor={`dept-${dept.id}`}
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  {dept.name}
-                </label>
-              </div>
-            ))}
-          </div>
-          {formError && <p className="text-xs text-red-500">{formError}</p>}
-          {selectedDepartments.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-2">
-              {selectedDepartments.map((dept) => (
-                <div key={dept} className="bg-jd-purple/20 text-jd-purple text-xs px-2 py-1 rounded-full flex items-center">
-                  {dept}
-                  <button
-                    type="button"
-                    className="ml-1"
-                    onClick={() => handleDepartmentCheckboxChange(dept, false)}
+          <Label htmlFor="type">Type</Label>
+          <Select
+            value={formData.type}
+            onValueChange={handleTypeChange}
+            required
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="request">Request</SelectItem>
+              <SelectItem value="project">Project</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {formData.type === "request" && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="department" className="flex items-center">
+                Required Department <span className="text-red-500 ml-1">*</span>
+              </Label>
+              <Select
+                value={formData.department}
+                onValueChange={handleDepartmentChange}
+                required
+              >
+                <SelectTrigger className={formError ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.name}>
+                      {dept.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {formError && <p className="text-xs text-red-500">{formError}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="relatedProject">Related Project (Optional)</Label>
+              <Select
+                value={formData.relatedProject}
+                onValueChange={handleProjectChange}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select related project (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {existingProjects.length > 0 ? (
+                    existingProjects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.title}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no-projects" disabled>
+                      No projects exist at this moment
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        )}
+
+        {formData.type === "project" && (
+          <div className="space-y-2">
+            <Label className="flex items-center">
+              Required Departments <span className="text-red-500 ml-1">*</span>
+              <span className="text-xs text-jd-mutedText ml-2">
+                (Select 3-5 departments)
+              </span>
+            </Label>
+            <div className="grid grid-cols-2 gap-2 mt-2 p-2 max-h-48 overflow-y-auto border rounded-md">
+              {departments.map((dept) => (
+                <div key={dept.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`dept-${dept.id}`}
+                    checked={selectedDepartments.includes(dept.name)}
+                    onCheckedChange={(checked) => 
+                      handleDepartmentCheckboxChange(dept.name, checked as boolean)
+                    }
+                  />
+                  <label
+                    htmlFor={`dept-${dept.id}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
-                    <X size={12} />
-                  </button>
+                    {dept.name}
+                  </label>
                 </div>
               ))}
             </div>
-          )}
+            {formError && <p className="text-xs text-red-500">{formError}</p>}
+            {selectedDepartments.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {selectedDepartments.map((dept) => (
+                  <div key={dept} className="bg-jd-purple/20 text-jd-purple text-xs px-2 py-1 rounded-full flex items-center">
+                    {dept}
+                    <button
+                      type="button"
+                      className="ml-1"
+                      onClick={() => handleDepartmentCheckboxChange(dept, false)}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <Label htmlFor="title">
+            {formData.type === 'project' ? 'Project Title' : 'Request Title'}
+          </Label>
+          <Input
+            id="title"
+            name="title"
+            value={formData.title}
+            onChange={handleChange}
+            placeholder={`Enter a brief title for your ${formData.type}`}
+            required
+          />
         </div>
-      )}
 
-      <div className="space-y-2">
-        <Label htmlFor="title">
-          {formData.type === 'project' ? 'Project Title' : 'Request Title'}
-        </Label>
-        <Input
-          id="title"
-          name="title"
-          value={formData.title}
-          onChange={handleChange}
-          placeholder={`Enter a brief title for your ${formData.type}`}
-          required
-        />
-      </div>
+        {formData.type === 'project' && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="priority">Priority</Label>
+              <Select
+                value={formData.priority}
+                onValueChange={handlePriorityChange}
+                required={formData.type === 'project'}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="usersNeeded">Number of Users Needed</Label>
+              <Select
+                value={formData.usersNeeded}
+                onValueChange={handleUsersNeededChange}
+                required={formData.type === 'project'}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select number of users needed" />
+                </SelectTrigger>
+                <SelectContent>
+                  {/* Starting from 2 users now as minimum */}
+                  <SelectItem value="2">2 users</SelectItem>
+                  <SelectItem value="3">3 users</SelectItem>
+                  <SelectItem value="4">4 users</SelectItem>
+                  <SelectItem value="5">5 users</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        )}
 
-      {formData.type === 'project' && (
-        <>
-          <div className="space-y-2">
-            <Label htmlFor="priority">Priority</Label>
-            <Select
-              value={formData.priority}
-              onValueChange={handlePriorityChange}
-              required={formData.type === 'project'}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select priority" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="usersNeeded">Number of Users Needed</Label>
-            <Select
-              value={formData.usersNeeded}
-              onValueChange={handleUsersNeededChange}
-              required={formData.type === 'project'}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select number of users needed" />
-              </SelectTrigger>
-              <SelectContent>
-                {/* Starting from 2 users now as minimum */}
-                <SelectItem value="2">2 users</SelectItem>
-                <SelectItem value="3">3 users</SelectItem>
-                <SelectItem value="4">4 users</SelectItem>
-                <SelectItem value="5">5 users</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </>
-      )}
+        <div className="space-y-2">
+          <Label htmlFor="description">Description</Label>
+          <Textarea
+            id="description"
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            placeholder={`Provide details about your ${formData.type}`}
+            rows={4}
+            required
+          />
+        </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
-        <Textarea
-          id="description"
-          name="description"
-          value={formData.description}
-          onChange={handleChange}
-          placeholder={`Provide details about your ${formData.type}`}
-          rows={4}
-          required
-        />
-      </div>
+        <div className="text-xs text-jd-mutedText mt-2">
+          {formData.type === 'request' 
+            ? 'Note: Requests expire after 30 days if status remains pending.'
+            : 'Note: Projects are archived after 60 days and deleted after 7 more days if status remains pending.'
+          }
+        </div>
 
-      <div className="text-xs text-jd-mutedText mt-2">
-        {formData.type === 'request' 
-          ? 'Note: Requests expire after 30 days if status remains pending.'
-          : 'Note: Projects are archived after 60 days and deleted after 7 more days if status remains pending.'
-        }
-      </div>
-
-      <Button type="submit" className="w-full bg-jd-purple hover:bg-jd-darkPurple" disabled={isSubmitting}>
-        {isSubmitting ? "Submitting..." : `Submit ${formData.type === 'project' ? 'Project' : 'Request'}`}
-      </Button>
-    </form>
+        <Button type="submit" className="w-full bg-jd-purple hover:bg-jd-darkPurple" disabled={isSubmitting}>
+          {isSubmitting ? "Submitting..." : `Submit ${formData.type === 'project' ? 'Project' : 'Request'}`}
+        </Button>
+      </form>
+    </ScrollArea>
   );
 };
 

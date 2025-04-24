@@ -125,7 +125,6 @@ const AcceptedItems = ({ acceptedItems, handleMarkCompleted, handleAbandon, hasM
                       variant="destructive"
                       className="flex items-center gap-1"
                       onClick={() => handleAbandon(item.id)}
-                      disabled={item.type === "project"}
                     >
                       <X size={16} />
                       Abandon
