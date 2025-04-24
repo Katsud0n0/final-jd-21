@@ -54,6 +54,7 @@ const DebugRequests = () => {
                 <TableHead>Status</TableHead>
                 <TableHead>Creator</TableHead>
                 <TableHead>AcceptedBy</TableHead>
+                <TableHead>Departments</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -69,6 +70,13 @@ const DebugRequests = () => {
                       ? request.acceptedBy.join(', ')
                       : typeof request.acceptedBy === 'string'
                         ? request.acceptedBy
+                        : 'None'}
+                  </TableCell>
+                  <TableCell className="max-w-[200px] truncate">
+                    {Array.isArray(request.departments) 
+                      ? request.departments.join(', ')
+                      : typeof request.department === 'string'
+                        ? request.department
                         : 'None'}
                   </TableCell>
                 </TableRow>

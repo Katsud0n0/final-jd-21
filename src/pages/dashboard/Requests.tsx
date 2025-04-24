@@ -77,15 +77,9 @@ const Requests = () => {
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
 
   useEffect(() => {
-    // Load requests from localStorage
     loadRequests();
-    
-    // Check for expired requests immediately on component mount
     checkExpiredRequests();
-
-    // Set up interval to check for expired requests
-    const checkExpiryInterval = setInterval(checkExpiredRequests, 60000); // Check every minute
-
+    const checkExpiryInterval = setInterval(checkExpiredRequests, 60000);
     return () => clearInterval(checkExpiryInterval);
   }, []);
 
@@ -96,7 +90,6 @@ const Requests = () => {
     }
   };
 
-  // Clear all requests from localStorage (admin only)
   const clearAllRequests = () => {
     localStorage.removeItem("jd-requests");
     setRequests([]);
@@ -106,32 +99,27 @@ const Requests = () => {
     });
   };
 
-  // Function to check for expired requests
   const checkExpiredRequests = () => {
     const now = new Date();
     const storedRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
     
     let updated = false;
     
-    // Process each request based on type and status
     const updatedRequests = storedRequests.map((req: Request) => {
-      // Check for completed/rejected items to mark as expired after 1 day
       if ((req.status === "Completed" || req.status === "Rejected") && req.lastStatusUpdate) {
         const statusUpdateDate = new Date(req.lastStatusUpdate);
         const oneDayLater = new Date(statusUpdateDate);
         oneDayLater.setDate(oneDayLater.getDate() + 1);
         
         if (now > oneDayLater && !req.isExpired) {
-          // Mark as expired for visual fading, will be deleted on next check
           updated = true;
           return { ...req, isExpired: true };
         }
       } 
       
-      // Auto-delete expired items
       if (req.isExpired) {
         updated = true;
-        return null; // Mark for deletion
+        return null;
       }
       
       if (req.status !== "Pending") return req;
@@ -139,17 +127,15 @@ const Requests = () => {
       const createdDate = new Date(req.createdAt || req.dateCreated);
       
       if (req.type === "request") {
-        // For requests: Auto-delete after 30 days if pending
         const expiryDays = 30;
         const expiryDate = new Date(createdDate);
         expiryDate.setDate(expiryDate.getDate() + expiryDays);
         
         if (now > expiryDate) {
           updated = true;
-          return null; // Mark for deletion
+          return null;
         }
       } else if (req.type === "project") {
-        // For projects: Auto-archive after 60 days if pending
         const archiveDays = 60;
         const archiveDate = new Date(createdDate);
         archiveDate.setDate(archiveDate.getDate() + archiveDays);
@@ -159,23 +145,21 @@ const Requests = () => {
           return { ...req, archived: true, archivedAt: now.toISOString() };
         }
         
-        // For archived projects: Auto-delete after 7 more days
         if (req.archived && req.archivedAt) {
           const deleteDate = new Date(req.archivedAt);
           deleteDate.setDate(deleteDate.getDate() + 7);
           
           if (now > deleteDate) {
             updated = true;
-            return null; // Mark for deletion
+            return null;
           }
         }
       }
       
       return req;
-    }).filter(Boolean); // Remove null items (deleted requests)
+    }).filter(Boolean);
     
     if (updated) {
-      // Some requests were expired/deleted
       localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
       setRequests(updatedRequests);
       
@@ -186,10 +170,9 @@ const Requests = () => {
     }
   };
 
-  // Function to close dialog and refresh requests
   const handleRequestSuccess = () => {
     setDialogOpen(false);
-    loadRequests(); // Reload requests to show the new one
+    loadRequests();
     toast({
       title: "Request created",
       description: "Your request has been successfully created.",
@@ -201,10 +184,8 @@ const Requests = () => {
     
     const now = new Date();
     
-    // Find the request we're updating
     const requestToUpdate = requests.find(r => r.id === requestId);
     
-    // Don't allow status change if request is already completed or rejected
     if (requestToUpdate && (requestToUpdate.status === "Completed" || requestToUpdate.status === "Rejected")) {
       toast({
         title: "Status cannot be changed",
@@ -223,9 +204,7 @@ const Requests = () => {
           lastStatusUpdateTime: now.toLocaleTimeString(),
         };
         
-        // Handle "In Process" status for regular requests
         if (newStatus === "In Process" && r.type === "request") {
-          // If it's a string (backward compatibility), convert to array
           const currentAcceptedBy = Array.isArray(r.acceptedBy) ? r.acceptedBy : [];
           
           if (!currentAcceptedBy.includes(user.username)) {
@@ -279,13 +258,11 @@ const Requests = () => {
     }
   };
 
-  // Open the accept confirmation dialog for a project
   const handleAcceptProject = (request: Request) => {
     setProjectToAccept(request.id);
     setAcceptDialogOpen(true);
   };
 
-  // Handle project acceptance after confirmation
   const confirmAcceptProject = () => {
     if (!projectToAccept || !user) {
       setAcceptDialogOpen(false);
@@ -302,7 +279,6 @@ const Requests = () => {
 
     const project = requests[projectIndex];
     
-    // Prepare the acceptedBy array
     const currentAcceptedBy = Array.isArray(project.acceptedBy) ? project.acceptedBy : [];
     
     if (currentAcceptedBy.includes(user.username)) {
@@ -314,11 +290,9 @@ const Requests = () => {
       return;
     }
     
-    // Update the project with the new user acceptance
     const updatedAcceptedBy = [...currentAcceptedBy, user.username];
     const updatedUsersAccepted = (project.usersAccepted || 0) + 1;
     
-    // Check if we've reached the required number of users
     const shouldUpdateStatus = updatedUsersAccepted >= (project.usersNeeded || 1) && project.status === "Pending";
     
     const updatedProject = {
@@ -332,7 +306,6 @@ const Requests = () => {
       })
     };
     
-    // Update the requests array
     const updatedRequests = [...requests];
     updatedRequests[projectIndex] = updatedProject;
     
@@ -350,70 +323,72 @@ const Requests = () => {
     setProjectToAccept(null);
   };
 
-  // Check if user can accept a request
+  const isUserDepartmentIncluded = (request: Request): boolean => {
+    if (!user) return false;
+    
+    if (Array.isArray(request.departments)) {
+      return request.departments.includes(user.department);
+    }
+    
+    if (typeof request.department === 'string') {
+      return request.department === user.department;
+    }
+    
+    return false;
+  };
+
   const canAcceptRequest = (request: Request) => {
     if (!user || !request) return false;
 
-    // Basic conditions for acceptance
     const basicConditions = user.role === "client" && 
                            request.status === "Pending" && 
                            !request.archived;
     
     if (!basicConditions) return false;
     
-    // For projects, check if the user hasn't already accepted and is not the creator
+    if (!isUserDepartmentIncluded(request)) {
+      return false;
+    }
+    
     if (request.type === "project") {
       const acceptedBy = Array.isArray(request.acceptedBy) ? request.acceptedBy : [];
-      // Exclude both creator and already accepted users
       return request.creator !== user.username && !acceptedBy.includes(user.username);
     }
     
-    // For regular requests, user must not be the creator
     return request.creator !== user.username;
   };
 
-  // Check if user can delete a specific request
   const canDeleteRequest = (request: Request) => {
-    // Not deletable if completed or rejected
     if (request.status === "Completed" || request.status === "Rejected") {
       return false;
     }
     
-    // Admin can delete requests in their department
     if (user?.role === "admin") {
       return user.department === request.department;
     }
     
-    // Regular user can only delete their own requests that are not completed/rejected
     return user?.username === request.creator;
   };
 
-  // Check if user can edit the status of a request
   const canEditStatus = (request: Request) => {
-    // Cannot change status if already completed or rejected
     if (request.status === "Completed" || request.status === "Rejected") {
       return false;
     }
     
-    // Only admin of the department can edit status
     return user?.role === "admin" && user?.department === request.department;
   };
-  
-  // Check if user can archive a project
+
   const canArchiveProject = (request: Request) => {
-    // Only admin of the department can archive projects
     return request.type === "project" && 
            user?.role === "admin" && 
            user?.department === request.department;
   };
 
-  // Function to open the details dialog
   const openDetailsDialog = (request: Request) => {
     setSelectedRequest(request);
     setDetailsDialogOpen(true);
   };
 
-  // Function to toggle department filter
   const toggleDepartmentFilter = (department: string) => {
     if (departmentFilters.includes(department)) {
       setDepartmentFilters(departmentFilters.filter(d => d !== department));
@@ -422,17 +397,15 @@ const Requests = () => {
     }
   };
 
-  // Function to clear all filters
   const clearFilters = () => {
     setStatusFilter("All");
     setDepartmentFilters([]);
     setSearchTerm("");
   };
 
-  // Render department tags with truncation
   const renderDepartmentTags = (request: Request) => {
     const depts = request.departments || [request.department as string];
-    const maxDisplayed = 2; // Show at most 2 departments, then show "+X more"
+    const maxDisplayed = 2;
     
     if (!Array.isArray(depts) || depts.length <= maxDisplayed) {
       return (
@@ -464,49 +437,39 @@ const Requests = () => {
     }
   };
 
-  // Modified filteredRequests to apply all filters
   const filteredRequests = requests.filter(request => {
-    // Search filter
     const matchesSearch = request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           request.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (typeof request.department === 'string' && request.department.toLowerCase().includes(searchTerm.toLowerCase())) ||
                           (request.creator && request.creator.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    // Status filter
     const matchesStatus = statusFilter === "All" || request.status === statusFilter;
     
-    // Department filter
     let matchesDepartment = true;
     if (departmentFilters.length > 0) {
       if (Array.isArray(request.departments)) {
-        // For projects with multiple departments, check if any match
         matchesDepartment = request.departments.some(dept => 
           departmentFilters.includes(dept)
         );
       } else {
-        // For single department requests
         matchesDepartment = departmentFilters.includes(request.department as string);
       }
     }
     
-    // Filter by type based on active tab
     const matchesType = 
       activeTab === "all" || 
       (activeTab === "requests" && request.type === "request") || 
       (activeTab === "projects" && request.type === "project");
     
-    // Don't show archived projects in the request tab at all
     const isNotArchived = !request.archived;
     
     return matchesSearch && matchesStatus && matchesDepartment && matchesType && isNotArchived;
   });
 
-  // Check if current user is admin
   const isAdmin = user?.role === 'admin';
 
   return (
     <div className="space-y-6">
-      {/* Page Header with Make Request Button */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-3xl font-bold">Requests</h2>
@@ -533,7 +496,6 @@ const Requests = () => {
         </Dialog>
       </div>
 
-      {/* Request/Project Type Tabs */}
       <Tabs defaultValue="all" onValueChange={value => setActiveTab(value)}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="all">All</TabsTrigger>
@@ -542,7 +504,6 @@ const Requests = () => {
         </TabsList>
       </Tabs>
 
-      {/* Search and Filter */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1 relative">
           <svg
@@ -655,7 +616,6 @@ const Requests = () => {
         </div>
       </div>
       
-      {/* Active Filters Display */}
       {(departmentFilters.length > 0 || statusFilter !== "All" || searchTerm) && (
         <div className="flex flex-wrap gap-2 items-center">
           <span className="text-sm text-jd-mutedText">Active Filters:</span>
@@ -689,7 +649,6 @@ const Requests = () => {
         </div>
       )}
       
-      {/* Requests Table */}
       <div className="bg-jd-card rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -827,7 +786,6 @@ const Requests = () => {
                       )}
                     </td>
                     <td className="px-4 py-4 text-sm">
-                      {/* Show expiration info in this column only */}
                       {request.type === "project" ? (
                         request.status === "Pending" ? (
                           <span>60 days</span>
@@ -851,7 +809,6 @@ const Requests = () => {
                     <td className="px-4 py-4">
                       <div className="flex flex-col space-y-2">
                         <div className="flex space-x-2">
-                          {/* Only show Archive button for admins */}
                           {canArchiveProject(request) && user?.role === "admin" && (
                             <Button
                               variant="ghost"
@@ -904,8 +861,7 @@ const Requests = () => {
                             </Button>
                           )}
                         </div>
-                        {/* Acceptance buttons for projects/requests, only shown if allowed */}
-                        {canAcceptRequest(request) && (
+                        {canAcceptRequest(request) ? (
                           <>
                             {request.type === "project" ? (
                               <Button 
@@ -925,6 +881,18 @@ const Requests = () => {
                               </Button>
                             )}
                           </>
+                        ) : (
+                          user && user.role === "client" && request.status === "Pending" && 
+                          request.creator !== user.username && !isUserDepartmentIncluded(request) && (
+                            <Button 
+                              size="sm"
+                              variant="outline"
+                              className="text-xs cursor-not-allowed opacity-50"
+                              disabled
+                            >
+                              Not for your department
+                            </Button>
+                          )
                         )}
                       </div>
                     </td>
@@ -942,7 +910,6 @@ const Requests = () => {
         </div>
       </div>
       
-      {/* Request Details Dialog */}
       <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
         <DialogContent className="bg-jd-card border-jd-card">
           <DialogHeader>
@@ -1010,7 +977,6 @@ const Requests = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Project Acceptance Confirmation Dialog */}
       <AlertDialog open={acceptDialogOpen} onOpenChange={setAcceptDialogOpen}>
         <AlertDialogContent className="bg-jd-card border-jd-card">
           <AlertDialogHeader>
@@ -1035,7 +1001,6 @@ const Requests = () => {
         </AlertDialogContent>
       </AlertDialog>
       
-      {/* Clear all requests button (admin only) */}
       {isAdmin && (
         <div className="flex justify-end">
           <AlertDialog>

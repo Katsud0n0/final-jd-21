@@ -21,6 +21,11 @@
 - Request expiration:  
   - Regular requests expire after 30 days if pending  
   - Completed/Rejected requests expire after 1 day  
+- **Department Restriction Logic:**
+  - Only users from the specified departments can accept requests/projects
+  - For regular requests, only the targeted department can accept
+  - For projects, only users from the 3-5 selected departments can accept
+  - Users from other departments see a disabled "Not for your department" button
 - **Profile/Request sync logic:**  
   - When creating project requests, the **creator is automatically included** in the list of participants  
   - Projects require a minimum of 2 and a maximum of 5 users (including creator)  
@@ -55,7 +60,7 @@
 
 - **Client Features:**
   - Create requests and projects
-  - Accept available projects
+  - Accept available projects (only from their own department)
   - View own submissions
   - Mark projects as complete
   - Cannot abandon or modify projects after accepting
@@ -122,7 +127,7 @@ To use SQLite for persistent storage:
    -- (You may want to update your API to parse and use JSON arrays from/to the frontend)
    ```
 
-3. **Configure Express Server:**
+3. **Configure Express Server with Department Restrictions:**
    ```javascript
    const express = require('express');
    const sqlite3 = require('sqlite3');
@@ -144,6 +149,65 @@ To use SQLite for persistent storage:
        res.json(rows);
      });
    });
+   
+   // Accept request endpoint with department validation
+   app.post('/requests/:id/accept', (req, res) => {
+     const { id } = req.params;
+     const { username, department } = req.body;
+     
+     // First, get the request to check department restrictions
+     db.get('SELECT * FROM requests WHERE id = ?', [id], (err, request) => {
+       if (err) return res.status(500).json({ error: err.message });
+       if (!request) return res.status(404).json({ error: 'Request not found' });
+       
+       // Parse departments array
+       const departments = JSON.parse(request.departments || '[]');
+       const singleDept = request.department;
+       
+       // Check if user's department is allowed
+       const isAllowedDepartment = departments.length > 0 
+         ? departments.includes(department)
+         : department === singleDept;
+         
+       if (!isAllowedDepartment) {
+         return res.status(403).json({ 
+           error: 'You cannot accept this request as your department is not included in the required departments' 
+         });
+       }
+       
+       // Process acceptance based on request type
+       if (request.type === 'project') {
+         // Project logic - acceptedBy is always an array
+         const acceptedBy = JSON.parse(request.acceptedBy || '[]');
+         if (acceptedBy.includes(username)) {
+           return res.status(400).json({ error: 'You have already accepted this project' });
+         }
+         
+         acceptedBy.push(username);
+         const usersAccepted = (request.usersAccepted || 0) + 1;
+         const status = usersAccepted >= request.usersNeeded ? 'In Process' : request.status;
+         
+         db.run(
+           'UPDATE requests SET acceptedBy = ?, usersAccepted = ?, status = ? WHERE id = ?',
+           [JSON.stringify(acceptedBy), usersAccepted, status, id],
+           function(err) {
+             if (err) return res.status(500).json({ error: err.message });
+             res.json({ message: 'Project accepted successfully', status });
+           }
+         );
+       } else {
+         // Regular request logic - acceptedBy is a string
+         db.run(
+           'UPDATE requests SET acceptedBy = ?, status = ? WHERE id = ?',
+           [username, 'In Process', id],
+           function(err) {
+             if (err) return res.status(500).json({ error: err.message });
+             res.json({ message: 'Request accepted successfully' });
+           }
+         );
+       }
+     });
+   });
 
    app.listen(3000, () => {
      console.log('Server running on port 3000');
@@ -153,6 +217,7 @@ To use SQLite for persistent storage:
 4. **Update Frontend:**
    - Replace localStorage calls with API requests  
    - Remember: for projects, keep `participants`, `participantsCompleted`, and `departments` fields in sync as arrays
+   - Ensure department validation on frontend matches backend logic
 
 ---
 
@@ -171,6 +236,6 @@ npm run dev
 
 ---
 
-**All user profile, requests, and project flows (including admin/client permission enforcement and proper project logic) are now reflected in this README.**  
+**All user profile, requests, and project flows (including admin/client permission enforcement, department restrictions and proper project logic) are now reflected in this README.**  
 For help, contact [Lovable support](https://lovable.dev).
 
