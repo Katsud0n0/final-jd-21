@@ -20,7 +20,7 @@ export interface Request {
   lastStatusUpdateTime?: string;
   usersNeeded?: number;
   usersAccepted?: number;
-  participantsCompleted?: string[];  // Added this line to resolve the TypeScript error
+  participantsCompleted?: string[];  // Added this property to fix the TypeScript error
 }
 
 export interface UserProfile {
