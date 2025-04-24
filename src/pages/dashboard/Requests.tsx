@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Trash2, Plus, Archive, Check, X, Clock, Ban } from "lucide-react";
+import { Trash2, Plus, Archive, Check, X, Clock, Ban, Filter, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -32,14 +32,19 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { departments } from "@/data/departments";
 
 interface Request {
   id: string;
   title: string;
-  department: string;
+  department: string | string[];
+  departments?: string[];
   dateCreated: string;
   status: string;
   creator: string;
+  creatorDepartment?: string;
   description: string;
   type: string;
   expirationDate?: string;
@@ -62,11 +67,14 @@ const Requests = () => {
   const [requests, setRequests] = useState<Request[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [departmentFilters, setDepartmentFilters] = useState<string[]>([]);
   const [requestToDelete, setRequestToDelete] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const [projectToAccept, setProjectToAccept] = useState<string | null>(null);
   const [acceptDialogOpen, setAcceptDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
 
   useEffect(() => {
     // Load requests from localStorage
@@ -342,8 +350,7 @@ const Requests = () => {
     setProjectToAccept(null);
   };
 
-  // Check if user can accept a request (only clients can accept),
-  // but for requests, the creator should NOT see the button.
+  // Check if user can accept a request
   const canAcceptRequest = (request: Request) => {
     if (!user || !request) return false;
 
@@ -400,13 +407,87 @@ const Requests = () => {
            user?.department === request.department;
   };
 
-  // Modified filteredRequests to hide archived projects
+  // Function to open the details dialog
+  const openDetailsDialog = (request: Request) => {
+    setSelectedRequest(request);
+    setDetailsDialogOpen(true);
+  };
+
+  // Function to toggle department filter
+  const toggleDepartmentFilter = (department: string) => {
+    if (departmentFilters.includes(department)) {
+      setDepartmentFilters(departmentFilters.filter(d => d !== department));
+    } else {
+      setDepartmentFilters([...departmentFilters, department]);
+    }
+  };
+
+  // Function to clear all filters
+  const clearFilters = () => {
+    setStatusFilter("All");
+    setDepartmentFilters([]);
+    setSearchTerm("");
+  };
+
+  // Render department tags with truncation
+  const renderDepartmentTags = (request: Request) => {
+    const depts = request.departments || [request.department as string];
+    const maxDisplayed = 2; // Show at most 2 departments, then show "+X more"
+    
+    if (!Array.isArray(depts) || depts.length <= maxDisplayed) {
+      return (
+        <div className="flex flex-wrap gap-1">
+          {Array.isArray(depts) ? depts.map(dept => (
+            <span key={dept} className="bg-jd-bg text-xs px-2 py-1 rounded-full">
+              {dept}
+            </span>
+          )) : depts}
+        </div>
+      );
+    } else {
+      const displayed = depts.slice(0, maxDisplayed);
+      const remaining = depts.length - maxDisplayed;
+      
+      return (
+        <div className="flex flex-wrap gap-1">
+          {displayed.map(dept => (
+            <span key={dept} className="bg-jd-bg text-xs px-2 py-1 rounded-full">
+              {dept}
+            </span>
+          ))}
+          <span className="bg-jd-purple/20 text-jd-purple text-xs px-2 py-1 rounded-full cursor-pointer" 
+                onClick={() => openDetailsDialog(request)}>
+            +{remaining} more
+          </span>
+        </div>
+      );
+    }
+  };
+
+  // Modified filteredRequests to apply all filters
   const filteredRequests = requests.filter(request => {
+    // Search filter
     const matchesSearch = request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           request.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          request.department.toLowerCase().includes(searchTerm.toLowerCase());
+                          (typeof request.department === 'string' && request.department.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                          (request.creator && request.creator.toLowerCase().includes(searchTerm.toLowerCase()));
     
+    // Status filter
     const matchesStatus = statusFilter === "All" || request.status === statusFilter;
+    
+    // Department filter
+    let matchesDepartment = true;
+    if (departmentFilters.length > 0) {
+      if (Array.isArray(request.departments)) {
+        // For projects with multiple departments, check if any match
+        matchesDepartment = request.departments.some(dept => 
+          departmentFilters.includes(dept)
+        );
+      } else {
+        // For single department requests
+        matchesDepartment = departmentFilters.includes(request.department as string);
+      }
+    }
     
     // Filter by type based on active tab
     const matchesType = 
@@ -417,7 +498,7 @@ const Requests = () => {
     // Don't show archived projects in the request tab at all
     const isNotArchived = !request.archived;
     
-    return matchesSearch && matchesStatus && matchesType && isNotArchived;
+    return matchesSearch && matchesStatus && matchesDepartment && matchesType && isNotArchived;
   });
 
   // Check if current user is admin
@@ -519,7 +600,94 @@ const Requests = () => {
             </SelectContent>
           </Select>
         </div>
+        <div className="w-full sm:w-auto">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-full sm:w-auto flex justify-between items-center">
+                <Filter size={18} className="mr-2" />
+                <span>Departments Filter</span>
+                {departmentFilters.length > 0 && (
+                  <span className="ml-2 bg-jd-purple text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                    {departmentFilters.length}
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80">
+              <div className="space-y-2">
+                <h4 className="font-medium">Filter by Department</h4>
+                <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                  {departments.map(dept => (
+                    <div key={dept.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`filter-${dept.id}`}
+                        checked={departmentFilters.includes(dept.name)}
+                        onCheckedChange={checked => {
+                          if (checked) {
+                            toggleDepartmentFilter(dept.name);
+                          } else {
+                            toggleDepartmentFilter(dept.name);
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor={`filter-${dept.id}`}
+                        className="text-sm cursor-pointer"
+                      >
+                        {dept.name}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                <div className="pt-2 flex justify-between">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={clearFilters}
+                  >
+                    Clear All Filters
+                  </Button>
+                  <Button size="sm">Apply Filters</Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
+      
+      {/* Active Filters Display */}
+      {(departmentFilters.length > 0 || statusFilter !== "All" || searchTerm) && (
+        <div className="flex flex-wrap gap-2 items-center">
+          <span className="text-sm text-jd-mutedText">Active Filters:</span>
+          {statusFilter !== "All" && (
+            <div className="bg-jd-bg px-2 py-1 rounded-full text-xs flex items-center gap-1">
+              Status: {statusFilter}
+              <button onClick={() => setStatusFilter("All")} className="hover:text-jd-purple">
+                <X size={14} />
+              </button>
+            </div>
+          )}
+          {departmentFilters.map(dept => (
+            <div key={dept} className="bg-jd-bg px-2 py-1 rounded-full text-xs flex items-center gap-1">
+              {dept}
+              <button onClick={() => toggleDepartmentFilter(dept)} className="hover:text-jd-purple">
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+          {searchTerm && (
+            <div className="bg-jd-bg px-2 py-1 rounded-full text-xs flex items-center gap-1">
+              Search: {searchTerm}
+              <button onClick={() => setSearchTerm("")} className="hover:text-jd-purple">
+                <X size={14} />
+              </button>
+            </div>
+          )}
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs">
+            Clear All
+          </Button>
+        </div>
+      )}
       
       {/* Requests Table */}
       <div className="bg-jd-card rounded-lg overflow-hidden">
@@ -534,7 +702,7 @@ const Requests = () => {
                   TITLE
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-jd-mutedText">
-                  DEPARTMENT
+                  REQUIRED DEPARTMENTS
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-jd-mutedText">
                   DATE CREATED
@@ -558,20 +726,65 @@ const Requests = () => {
                 filteredRequests.map((request) => (
                   <tr 
                     key={request.id} 
-                    className={`border-t border-jd-bg ${(request.status === "Completed" || request.status === "Rejected") ? 'opacity-50' : ''} ${request.isExpired ? 'opacity-30' : ''}`}
+                    className={`border-t border-jd-bg ${
+                      (request.status === "Completed" || request.status === "Rejected") ? 'opacity-50' : ''
+                    } ${request.isExpired ? 'opacity-30' : ''}`}
                   >
                     <td className="px-4 py-4 text-sm">{request.id}</td>
                     <td className="px-4 py-4 text-sm font-medium">
-                      {request.title}
-                      {request.type === "project" && (
-                        <span className="ml-2 px-2 py-0.5 text-xs bg-jd-purple/20 text-jd-purple rounded-full">
-                          Project
-                        </span>
+                      <div className="flex items-center space-x-2">
+                        <span>{request.title}</span>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full">
+                              <Info size={14} />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="bg-jd-card border-jd-card">
+                            <DialogHeader>
+                              <DialogTitle>{request.title}</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4 mt-2">
+                              <div>
+                                <h4 className="text-sm font-medium mb-1">Required Departments:</h4>
+                                <p className="text-jd-mutedText text-sm">
+                                  {Array.isArray(request.departments) 
+                                    ? request.departments.join(", ") 
+                                    : request.department}
+                                </p>
+                              </div>
+                              {request.creatorDepartment && (
+                                <div>
+                                  <h4 className="text-sm font-medium mb-1">Creator Department:</h4>
+                                  <p className="text-jd-mutedText text-sm">{request.creatorDepartment}</p>
+                                </div>
+                              )}
+                              <div>
+                                <h4 className="text-sm font-medium mb-1">Description:</h4>
+                                <p className="text-jd-mutedText text-sm">{request.description}</p>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                        {request.type === "project" && (
+                          <span className="ml-2 px-2 py-0.5 text-xs bg-jd-purple/20 text-jd-purple rounded-full">
+                            Project
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-sm">
+                      {renderDepartmentTags(request)}
+                    </td>
+                    <td className="px-4 py-4 text-sm">{request.dateCreated}</td>
+                    <td className="px-4 py-4 text-sm">
+                      {request.creator}
+                      {request.creatorDepartment && (
+                        <div className="text-xs text-jd-mutedText italic">
+                          ({request.creatorDepartment})
+                        </div>
                       )}
                     </td>
-                    <td className="px-4 py-4 text-sm">{request.department}</td>
-                    <td className="px-4 py-4 text-sm">{request.dateCreated}</td>
-                    <td className="px-4 py-4 text-sm">{request.creator}</td>
                     <td className="px-4 py-4">
                       {canEditStatus(request) ? (
                         <Select
@@ -728,6 +941,74 @@ const Requests = () => {
           </table>
         </div>
       </div>
+      
+      {/* Request Details Dialog */}
+      <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
+        <DialogContent className="bg-jd-card border-jd-card">
+          <DialogHeader>
+            <DialogTitle>{selectedRequest?.title}</DialogTitle>
+            <DialogDescription>
+              {selectedRequest?.type === "project" ? "Project" : "Request"} Details
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <h4 className="text-sm font-medium mb-1">Required Departments:</h4>
+              <div className="flex flex-wrap gap-1">
+                {selectedRequest?.departments ? 
+                  selectedRequest.departments.map(dept => (
+                    <span key={dept} className="bg-jd-purple/10 text-jd-purple px-2 py-1 text-xs rounded-full">
+                      {dept}
+                    </span>
+                  )) : 
+                  <span className="bg-jd-purple/10 text-jd-purple px-2 py-1 text-xs rounded-full">
+                    {selectedRequest?.department}
+                  </span>
+                }
+              </div>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium mb-1">Created By:</h4>
+              <p className="text-jd-mutedText">
+                {selectedRequest?.creator} 
+                {selectedRequest?.creatorDepartment && ` - ${selectedRequest.creatorDepartment}`}
+              </p>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium mb-1">Description:</h4>
+              <p className="text-jd-mutedText">{selectedRequest?.description}</p>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium mb-1">Status:</h4>
+              <span className={`px-2 py-1 rounded text-xs ${
+                selectedRequest?.status === "Pending" ? "bg-jd-orange/20 text-jd-orange" : 
+                selectedRequest?.status === "In Process" ? "bg-blue-500/20 text-blue-500" :
+                selectedRequest?.status === "Completed" ? "bg-jd-green/20 text-jd-green" :
+                "bg-jd-red/20 text-jd-red"
+              }`}>
+                {selectedRequest?.status}
+              </span>
+            </div>
+            {selectedRequest?.type === "project" && selectedRequest?.usersNeeded && (
+              <div>
+                <h4 className="text-sm font-medium mb-1">Participation:</h4>
+                <p className="text-jd-mutedText">
+                  {selectedRequest.usersAccepted || 0} of {selectedRequest.usersNeeded} required users have accepted
+                </p>
+                {selectedRequest.acceptedBy && Array.isArray(selectedRequest.acceptedBy) && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {selectedRequest.acceptedBy.map((user) => (
+                      <span key={user} className="bg-jd-bg px-2 py-1 text-xs rounded-full">
+                        {user}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
       
       {/* Project Acceptance Confirmation Dialog */}
       <AlertDialog open={acceptDialogOpen} onOpenChange={setAcceptDialogOpen}>

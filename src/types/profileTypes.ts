@@ -2,10 +2,12 @@
 export interface Request {
   id: string;
   title: string;
-  department: string;
+  department: string | string[];
+  departments?: string[];
   dateCreated: string;
   status: string;
   creator: string;
+  creatorDepartment?: string;
   description?: string;
   type: string;
   expirationDate?: string;

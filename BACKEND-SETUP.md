@@ -1,3 +1,4 @@
+
 # JD Frameworks - Backend Implementation Guide
 
 This guide provides the complete setup and implementation code for connecting your JD Frameworks frontend to a SQLite backend.
@@ -73,7 +74,9 @@ db.serialize(() => {
       title TEXT NOT NULL,
       description TEXT,
       department TEXT NOT NULL,
+      departments TEXT, -- JSON array of departments for multi-department projects
       creator TEXT NOT NULL,
+      creatorDepartment TEXT, -- Store the creator's department
       creatorRole TEXT,
       status TEXT NOT NULL,
       type TEXT NOT NULL,
@@ -409,10 +412,21 @@ app.get('/api/requests', async (req, res) => {
       ORDER BY createdAt DESC
     `);
     
-    // Convert group_concat results to arrays
+    // Convert group_concat results to arrays and parse JSON fields
     requests.forEach(request => {
       request.acceptedBy = request.acceptedBy ? request.acceptedBy.split(',') : [];
       request.completedBy = request.completedBy ? request.completedBy.split(',') : [];
+      
+      // Parse departments JSON if it exists
+      if (request.departments) {
+        try {
+          request.departments = JSON.parse(request.departments);
+        } catch (e) {
+          request.departments = [request.department];
+        }
+      } else {
+        request.departments = [request.department];
+      }
       
       // For projects, confirm creator is automatically included
       if (request.type === 'project' && !request.acceptedBy.includes(request.creator)) {
@@ -429,16 +443,16 @@ app.get('/api/requests', async (req, res) => {
 app.post('/api/requests', async (req, res) => {
   try {
     const {
-      title, description, department, creator, type, priority, usersNeeded, relatedProject
+      title, description, department, departments, creator, type, priority, usersNeeded, relatedProject
     } = req.body;
     
     // Validate required fields
-    if (!title || !department || !creator || !type) {
+    if (!title || !(department || departments) || !creator || !type) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     
-    // Get creator info to store creatorRole
-    const userInfo = await runQuery('SELECT role FROM users WHERE username = ?', [creator]);
+    // Get creator info to store creatorRole and department
+    const userInfo = await runQuery('SELECT role, department FROM users WHERE username = ?', [creator]);
     if (userInfo.length === 0) {
       return res.status(400).json({ error: 'Creator user not found' });
     }
@@ -446,19 +460,27 @@ app.post('/api/requests', async (req, res) => {
     const now = new Date();
     const requestId = `#${Math.floor(100000 + Math.random() * 900000)}`;
     
+    // For projects, use the first department as primary and store all as JSON array
+    const primaryDepartment = department || (Array.isArray(departments) ? departments[0] : "General");
+    const departmentsJson = Array.isArray(departments) 
+      ? JSON.stringify(departments) 
+      : JSON.stringify([primaryDepartment]);
+    
     // Insert the request
     await runCommand(`
       INSERT INTO requests (
-        id, title, description, department, creator, creatorRole, status, 
+        id, title, description, department, departments, creator, creatorDepartment, creatorRole, status, 
         type, dateCreated, createdAt, priority, usersNeeded, relatedProject
       ) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       requestId, 
       title, 
       description, 
-      department, 
-      creator, 
+      primaryDepartment,
+      departmentsJson,
+      creator,
+      userInfo[0].department,
       userInfo[0].role,
       'Pending',
       type,
@@ -820,10 +842,21 @@ app.get('/api/requests/user/:username', async (req, res) => {
       ORDER BY r.createdAt DESC
     `, [username, username]);
     
-    // Convert group_concat results to arrays
+    // Convert group_concat results to arrays and parse JSON fields
     [...createdRequests, ...acceptedRequests].forEach(request => {
       request.acceptedBy = request.acceptedBy ? request.acceptedBy.split(',') : [];
       request.completedBy = request.completedBy ? request.completedBy.split(',') : [];
+      
+      // Parse departments JSON if it exists
+      if (request.departments) {
+        try {
+          request.departments = JSON.parse(request.departments);
+        } catch (e) {
+          request.departments = [request.department];
+        }
+      } else {
+        request.departments = [request.department];
+      }
       
       // For projects, confirm creator is automatically included in acceptedBy
       if (request.type === 'project' && !request.acceptedBy.includes(request.creator)) {
@@ -835,6 +868,81 @@ app.get('/api/requests/user/:username', async (req, res) => {
       created: createdRequests,
       accepted: acceptedRequests
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/requests/filter', async (req, res) => {
+  try {
+    const { status, department, search, type } = req.query;
+    
+    let query = 'SELECT r.*, ' +
+      '(SELECT GROUP_CONCAT(username) FROM request_participants WHERE requestId = r.id AND hasAccepted = 1) as acceptedBy, ' +
+      '(SELECT GROUP_CONCAT(username) FROM request_participants WHERE requestId = r.id AND hasCompleted = 1) as completedBy ' +
+      'FROM requests r WHERE 1=1';
+    
+    const params = [];
+    
+    // Add status filter if provided
+    if (status && status !== 'All') {
+      query += ' AND r.status = ?';
+      params.push(status);
+    }
+    
+    // Add type filter if provided
+    if (type && type !== 'all') {
+      query += ' AND r.type = ?';
+      params.push(type);
+    }
+    
+    // Add department filter 
+    if (department) {
+      // Either primary department matches or it's in the JSON departments array
+      // This is a simple approach - in a real DB you'd use JSON functions
+      query += ' AND (r.department = ? OR r.departments LIKE ?)';
+      params.push(department);
+      params.push(`%${department}%`);
+    }
+    
+    // Add search term if provided
+    if (search) {
+      query += ' AND (r.title LIKE ? OR r.id LIKE ? OR r.department LIKE ? OR r.creator LIKE ?)';
+      const searchParam = `%${search}%`;
+      params.push(searchParam, searchParam, searchParam, searchParam);
+    }
+    
+    // Don't show archived projects
+    query += ' AND (r.archived IS NULL OR r.archived = 0)';
+    
+    // Order by created date, newest first
+    query += ' ORDER BY r.createdAt DESC';
+    
+    const requests = await runQuery(query, params);
+    
+    // Process the results
+    requests.forEach(request => {
+      request.acceptedBy = request.acceptedBy ? request.acceptedBy.split(',') : [];
+      request.completedBy = request.completedBy ? request.completedBy.split(',') : [];
+      
+      // Parse departments JSON
+      if (request.departments) {
+        try {
+          request.departments = JSON.parse(request.departments);
+        } catch (e) {
+          request.departments = [request.department];
+        }
+      } else {
+        request.departments = [request.department]; 
+      }
+      
+      // For projects, confirm creator is automatically included
+      if (request.type === 'project' && !request.acceptedBy.includes(request.creator)) {
+        request.acceptedBy.push(request.creator);
+      }
+    });
+    
+    res.json(requests);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -863,13 +971,327 @@ app.delete('/api/requests/:id', async (req, res) => {
 app.post('/api/requests/check-expiration', async (req, res) => {
   try {
     const now = new Date();
+    let updated = false;
     
-    // Calculate dates for comparison
+    // 1. Completed/Rejected requests expire after 1 day
+    const completedOrRejected = await runQuery(`
+      SELECT id, lastStatusUpdate 
+      FROM requests 
+      WHERE (status = 'Completed' OR status = 'Rejected')
+        AND isExpired = 0
+    `);
+    
+    for (const request of completedOrRejected) {
+      const statusUpdateDate = new Date(request.lastStatusUpdate);
+      const oneDayLater = new Date(statusUpdateDate);
+      oneDayLater.setDate(oneDayLater.getDate() + 1);
+      
+      if (now > oneDayLater) {
+        await runCommand(
+          'UPDATE requests SET isExpired = 1 WHERE id = ?',
+          [request.id]
+        );
+        updated = true;
+      }
+    }
+    
+    // 2. Delete expired requests
+    const expiredResult = await runCommand(
+      'DELETE FROM requests WHERE isExpired = 1'
+    );
+    
+    if (expiredResult.changes > 0) {
+      updated = true;
+    }
+    
+    // 3. Archive pending projects after 60 days
     const thirtyDaysAgo = new Date(now);
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
     const sixtyDaysAgo = new Date(now);
     sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
     
-    const oneDayAgo = new Date(now);
-    oneDayAgo.setDate(oneDayAgo.getDate()
+    // Archive pending projects after 60 days
+    const pendingProjects = await runQuery(`
+      SELECT id, createdAt
+      FROM requests
+      WHERE type = 'project'
+        AND status = 'Pending'
+        AND (archived IS NULL OR archived = 0)
+    `);
+    
+    for (const project of pendingProjects) {
+      const createdDate = new Date(project.createdAt);
+      if (createdDate < sixtyDaysAgo) {
+        await runCommand(
+          'UPDATE requests SET archived = 1, archivedAt = ? WHERE id = ?',
+          [now.toISOString(), project.id]
+        );
+        updated = true;
+      }
+    }
+    
+    // 4. Delete archived projects after 7 more days
+    const archivedProjects = await runQuery(`
+      SELECT id, archivedAt
+      FROM requests
+      WHERE archived = 1
+    `);
+    
+    for (const project of archivedProjects) {
+      const archivedDate = new Date(project.archivedAt);
+      const deleteDate = new Date(archivedDate);
+      deleteDate.setDate(deleteDate.getDate() + 7);
+      
+      if (now > deleteDate) {
+        // Delete participants first
+        await runCommand(
+          'DELETE FROM request_participants WHERE requestId = ?',
+          [project.id]
+        );
+        
+        // Then delete the project
+        await runCommand(
+          'DELETE FROM requests WHERE id = ?',
+          [project.id]
+        );
+        
+        updated = true;
+      }
+    }
+    
+    // 5. Delete pending regular requests after 30 days
+    const pendingRequests = await runQuery(`
+      SELECT id, createdAt
+      FROM requests
+      WHERE type = 'request'
+        AND status = 'Pending'
+    `);
+    
+    for (const request of pendingRequests) {
+      const createdDate = new Date(request.createdAt);
+      if (createdDate < thirtyDaysAgo) {
+        // Delete participants first
+        await runCommand(
+          'DELETE FROM request_participants WHERE requestId = ?',
+          [request.id]
+        );
+        
+        // Then delete the request
+        await runCommand(
+          'DELETE FROM requests WHERE id = ?',
+          [request.id]
+        );
+        
+        updated = true;
+      }
+    }
+    
+    res.json({
+      updated: updated,
+      message: updated ? 'Expired items processed' : 'No items needed processing'
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Start the server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+```
+
+## API Endpoints Implementation
+
+The server.js file above includes all necessary API endpoints:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/users` | GET | Get all users |
+| `/api/users` | POST | Create a new user |
+| `/api/users/:id` | GET | Get a user by ID |
+| `/api/users/:id` | PUT | Update a user |
+| `/api/users/login` | POST | Login a user or create if new |
+| `/api/departments` | GET | Get all departments |
+| `/api/requests` | GET | Get all requests |
+| `/api/requests` | POST | Create a new request |
+| `/api/requests/:id` | PUT | Update a request |
+| `/api/requests/:id` | DELETE | Delete a request |
+| `/api/requests/:id/accept` | POST | Accept a request |
+| `/api/requests/:id/complete` | POST | Mark a request as complete |
+| `/api/requests/:id/abandon` | POST | Abandon a request |
+| `/api/requests/user/:username` | GET | Get requests for a specific user |
+| `/api/requests/filter` | GET | Filter requests by criteria |
+| `/api/requests/check-expiration` | POST | Check and process expired requests |
+
+## Frontend Integration
+
+To integrate the SQLite backend with the frontend, you'll need to replace the localStorage calls with API calls. Here's a simple utility file to help with that:
+
+```javascript
+// src/utils/api.js
+
+const API_URL = 'http://localhost:3000/api';
+
+export const api = {
+  // User endpoints
+  async getUsers() {
+    const response = await fetch(`${API_URL}/users`);
+    return await response.json();
+  },
+  
+  async getUser(id) {
+    const response = await fetch(`${API_URL}/users/${id}`);
+    return await response.json();
+  },
+  
+  async createUser(userData) {
+    const response = await fetch(`${API_URL}/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData)
+    });
+    return await response.json();
+  },
+  
+  async updateUser(id, userData) {
+    const response = await fetch(`${API_URL}/users/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData)
+    });
+    return await response.json();
+  },
+  
+  async login(username, password) {
+    const response = await fetch(`${API_URL}/users/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    return await response.json();
+  },
+  
+  // Request endpoints
+  async getRequests() {
+    const response = await fetch(`${API_URL}/requests`);
+    return await response.json();
+  },
+  
+  async createRequest(requestData) {
+    const response = await fetch(`${API_URL}/requests`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestData)
+    });
+    return await response.json();
+  },
+  
+  async updateRequest(id, requestData) {
+    const response = await fetch(`${API_URL}/requests/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestData)
+    });
+    return await response.json();
+  },
+  
+  async deleteRequest(id) {
+    const response = await fetch(`${API_URL}/requests/${id}`, {
+      method: 'DELETE'
+    });
+    return await response.json();
+  },
+  
+  async acceptRequest(id, username) {
+    const response = await fetch(`${API_URL}/requests/${id}/accept`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username })
+    });
+    return await response.json();
+  },
+  
+  async completeRequest(id, username) {
+    const response = await fetch(`${API_URL}/requests/${id}/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username })
+    });
+    return await response.json();
+  },
+  
+  async abandonRequest(id, username) {
+    const response = await fetch(`${API_URL}/requests/${id}/abandon`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username })
+    });
+    return await response.json();
+  },
+  
+  async getUserRequests(username) {
+    const response = await fetch(`${API_URL}/requests/user/${username}`);
+    return await response.json();
+  },
+  
+  async filterRequests(filters) {
+    const queryParams = new URLSearchParams(filters).toString();
+    const response = await fetch(`${API_URL}/requests/filter?${queryParams}`);
+    return await response.json();
+  },
+  
+  async checkExpiredRequests() {
+    const response = await fetch(`${API_URL}/requests/check-expiration`, {
+      method: 'POST'
+    });
+    return await response.json();
+  },
+  
+  // Department endpoints
+  async getDepartments() {
+    const response = await fetch(`${API_URL}/departments`);
+    return await response.json();
+  }
+};
+```
+
+## Running the Application
+
+1. First, install the required dependencies:
+   ```bash
+   npm install sqlite3 express cors body-parser
+   ```
+
+2. Create and set up the database:
+   ```bash
+   node setup-database.js
+   ```
+
+3. Start the Express server:
+   ```bash
+   node server.js
+   ```
+
+4. Update your React components to use the API instead of localStorage. For example, replace code like:
+   ```javascript
+   const storedRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
+   ```
+
+   with:
+   ```javascript
+   const storedRequests = await api.getRequests();
+   ```
+
+5. Make sure your frontend application is configured to use the API endpoints.
+
+The backend now fully supports all the new features:
+- Multiple department selection for projects (3-5 departments)
+- Creator department tracking
+- Enhanced filtering capabilities (status, department, search)
+- Truncated tags with +X more functionality
+- Project/request detail view
+
+With this setup, all the accepted requests will properly appear in the profile tab, filtered by the correct acceptance criteria.

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +14,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { departments } from "@/data/departments";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Check, X } from "lucide-react";
 
 interface RequestFormProps {
   onSuccess?: () => void;
@@ -24,6 +27,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingProjects, setExistingProjects] = useState<any[]>([]);
   const [formError, setFormError] = useState("");
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -61,6 +65,27 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
       // Reset usersNeeded to 2 if changing to project type
       usersNeeded: value === "project" ? "2" : prev.usersNeeded
     }));
+    
+    // Clear selected departments when switching types
+    if (value === "request") {
+      setSelectedDepartments([]);
+    }
+  };
+
+  const handleDepartmentCheckboxChange = (deptName: string, checked: boolean) => {
+    if (checked) {
+      if (selectedDepartments.length < 5) {
+        setSelectedDepartments([...selectedDepartments, deptName]);
+      } else {
+        toast({
+          title: "Maximum departments reached",
+          description: "You can select a maximum of 5 departments for a project.",
+          variant: "destructive",
+        });
+      }
+    } else {
+      setSelectedDepartments(selectedDepartments.filter(d => d !== deptName));
+    }
   };
 
   const handleProjectChange = (value: string) => {
@@ -79,8 +104,14 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
     e.preventDefault();
     
     // Validate department selection
-    if (!formData.department) {
+    if (formData.type === "request" && !formData.department) {
       setFormError("Please select a department");
+      return;
+    }
+    
+    // For projects, validate that at least 3 departments are selected
+    if (formData.type === "project" && selectedDepartments.length < 3) {
+      setFormError("Please select at least 3 departments for your project");
       return;
     }
     
@@ -100,10 +131,12 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
       const newItem = {
         id: `#${Math.floor(100000 + Math.random() * 900000)}`,
         title: formData.title,
-        department: formData.department,
+        department: formData.type === "project" ? selectedDepartments[0] : formData.department,
+        departments: formData.type === "project" ? selectedDepartments : [formData.department],
         status: "Pending",
         dateCreated: now.toLocaleDateString("en-GB"),
         creator: user?.username || "user",
+        creatorDepartment: user?.department || "Unknown Department",
         description: formData.description,
         type: formData.type,
         createdAt: now.toISOString(),
@@ -138,6 +171,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         priority: "medium",
         usersNeeded: "2", // Reset to default 2 users
       });
+      setSelectedDepartments([]);
 
       // Call the success callback
       if (onSuccess) {
@@ -183,30 +217,102 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
       </div>
 
       {formData.type === "request" && (
-        <div className="space-y-2">
-          <Label htmlFor="relatedProject">Related Project (Optional)</Label>
-          <Select
-            value={formData.relatedProject}
-            onValueChange={handleProjectChange}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select related project (optional)" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None</SelectItem>
-              {existingProjects.length > 0 ? (
-                existingProjects.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.title}
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="department" className="flex items-center">
+              Required Department <span className="text-red-500 ml-1">*</span>
+            </Label>
+            <Select
+              value={formData.department}
+              onValueChange={handleDepartmentChange}
+              required
+            >
+              <SelectTrigger className={formError ? "border-red-500" : ""}>
+                <SelectValue placeholder="Select department" />
+              </SelectTrigger>
+              <SelectContent>
+                {departments.map((dept) => (
+                  <SelectItem key={dept.id} value={dept.name}>
+                    {dept.name}
                   </SelectItem>
-                ))
-              ) : (
-                <SelectItem value="no-projects" disabled>
-                  No projects exist at this moment
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
+                ))}
+              </SelectContent>
+            </Select>
+            {formError && <p className="text-xs text-red-500">{formError}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="relatedProject">Related Project (Optional)</Label>
+            <Select
+              value={formData.relatedProject}
+              onValueChange={handleProjectChange}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select related project (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {existingProjects.length > 0 ? (
+                  existingProjects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.title}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="no-projects" disabled>
+                    No projects exist at this moment
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        </>
+      )}
+
+      {formData.type === "project" && (
+        <div className="space-y-2">
+          <Label className="flex items-center">
+            Required Departments <span className="text-red-500 ml-1">*</span>
+            <span className="text-xs text-jd-mutedText ml-2">
+              (Select 3-5 departments)
+            </span>
+          </Label>
+          <div className="grid grid-cols-2 gap-2 mt-2 p-2 max-h-48 overflow-y-auto border rounded-md">
+            {departments.map((dept) => (
+              <div key={dept.id} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`dept-${dept.id}`}
+                  checked={selectedDepartments.includes(dept.name)}
+                  onCheckedChange={(checked) => 
+                    handleDepartmentCheckboxChange(dept.name, checked as boolean)
+                  }
+                />
+                <label
+                  htmlFor={`dept-${dept.id}`}
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  {dept.name}
+                </label>
+              </div>
+            ))}
+          </div>
+          {formError && <p className="text-xs text-red-500">{formError}</p>}
+          {selectedDepartments.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {selectedDepartments.map((dept) => (
+                <div key={dept} className="bg-jd-purple/20 text-jd-purple text-xs px-2 py-1 rounded-full flex items-center">
+                  {dept}
+                  <button
+                    type="button"
+                    className="ml-1"
+                    onClick={() => handleDepartmentCheckboxChange(dept, false)}
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -222,29 +328,6 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
           placeholder={`Enter a brief title for your ${formData.type}`}
           required
         />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="department" className="flex items-center">
-          Department <span className="text-red-500 ml-1">*</span>
-        </Label>
-        <Select
-          value={formData.department}
-          onValueChange={handleDepartmentChange}
-          required
-        >
-          <SelectTrigger className={formError ? "border-red-500" : ""}>
-            <SelectValue placeholder="Select department" />
-          </SelectTrigger>
-          <SelectContent>
-            {departments.map((dept) => (
-              <SelectItem key={dept.id} value={dept.name}>
-                {dept.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {formError && <p className="text-xs text-red-500">{formError}</p>}
       </div>
 
       {formData.type === 'project' && (

@@ -27,10 +27,18 @@
   - Projects are visible in all participants' profiles (both creator and all who accept)  
   - All users (creator + accepted) can mark project as complete; project is only "Completed" when everyone has marked complete  
   - Projects **cannot be abandoned** by any user after accepting (Abandon button is disabled for projects)
+- **Advanced Filtering & Details:**
+  - Filter by status, department, or text search
+  - Clickable info icon to view request/project details
+  - Multi-department selection for projects (3-5 departments required)
+  - Truncated department tags with "+X more" option for projects with many departments
+  - Creator department displayed below creator name
 
 ### Project System
 - Projects require 2–5 users **(including the creator!)**
+- Projects require selecting 3-5 departments during creation
 - The project creator is automatically counted as the first participant
+- Creator department is displayed with the creator's name
 - All participants (creator + all who accept) see the project in their profile tab after accepting
 - Projects cannot be abandoned once accepted (no "Abandon" option at any time)
 - Each participant must independently mark the project as "Completed" in their profile; project status updates to "Completed" only when **all** do so
@@ -91,7 +99,9 @@ To use SQLite for persistent storage:
      title TEXT,
      description TEXT,
      department TEXT,
+     departments TEXT, -- JSON array of departments for projects
      creator TEXT,
+     creatorDepartment TEXT,
      status TEXT,
      type TEXT,
      dateCreated TEXT,
@@ -129,6 +139,7 @@ To use SQLite for persistent storage:
        rows.forEach(row => {
           row.participants = JSON.parse(row.participants || '[]');
           row.participantsCompleted = JSON.parse(row.participantsCompleted || '[]');
+          row.departments = JSON.parse(row.departments || '[]');
        });
        res.json(rows);
      });
@@ -141,7 +152,7 @@ To use SQLite for persistent storage:
 
 4. **Update Frontend:**
    - Replace localStorage calls with API requests  
-   - Remember: for projects, keep `participants` and `participantsCompleted` fields in sync as arrays
+   - Remember: for projects, keep `participants`, `participantsCompleted`, and `departments` fields in sync as arrays
 
 ---
 
@@ -162,3 +173,4 @@ npm run dev
 
 **All user profile, requests, and project flows (including admin/client permission enforcement and proper project logic) are now reflected in this README.**  
 For help, contact [Lovable support](https://lovable.dev).
+

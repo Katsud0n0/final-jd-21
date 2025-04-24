@@ -19,7 +19,7 @@ const ActivitySummary = ({ userRequests }: ActivitySummaryProps) => {
       <h3 className="text-xl font-medium mb-6">Activity Summary</h3>
       <p className="text-jd-mutedText mb-4">Overview of your activity on the platform</p>
       
-      <div className="grid grid-cols-4 gap-4 text-center">
+      <div className="grid grid-cols-5 gap-4 text-center">
         <div>
           <div className="text-4xl font-bold text-jd-purple">{totalRequests}</div>
           <p className="text-jd-mutedText">Total</p>
@@ -35,6 +35,10 @@ const ActivitySummary = ({ userRequests }: ActivitySummaryProps) => {
         <div>
           <div className="text-4xl font-bold text-green-500">{completedRequests}</div>
           <p className="text-jd-mutedText">Completed</p>
+        </div>
+        <div>
+          <div className="text-4xl font-bold text-red-500">{rejectedRequests}</div>
+          <p className="text-jd-mutedText">Rejected</p>
         </div>
       </div>
     </div>
