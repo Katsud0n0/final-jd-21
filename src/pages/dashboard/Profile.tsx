@@ -118,20 +118,23 @@ const Profile = () => {
     (user?.role === "admin" ? r.department === user?.department : r.creator === user?.username)
   );
 
-  // Accepted projects -- show all projects where the user has accepted (is in acceptedBy array)
+  // Accepted projects -- show all projects where the user has accepted (is in acceptedBy array) OR requests where the user is acceptedBy
   const acceptedItems = requests.filter((r: Request) =>
     // For projects: Show if user is in acceptedBy array AND the project is In Process
     (r.type === "project" && r.status === "In Process" && 
      r.acceptedBy && Array.isArray(r.acceptedBy) && r.acceptedBy.includes(user?.username)) ||
-    // For requests: Show if user created it AND it's In Process
-    (r.type === "request" && r.status === "In Process" && r.creator === user?.username)
+    // For requests: Show if accepted by user AND it's In Process
+    (r.type === "request" && r.status === "In Process" && 
+     ((Array.isArray(r.acceptedBy) && r.acceptedBy.includes(user?.username)) || 
+      r.acceptedBy === user?.username))
   );
 
   // Get history items (completed or rejected)
   const historyItems = requests.filter(
     (r: Request) => (r.status === "Completed" || r.status === "Rejected") && 
     (r.creator === user?.username || 
-     (r.type === "project" && r.acceptedBy && Array.isArray(r.acceptedBy) && r.acceptedBy.includes(user?.username)))
+     (r.acceptedBy && ((Array.isArray(r.acceptedBy) && r.acceptedBy.includes(user?.username)) || 
+      r.acceptedBy === user?.username)))
   );
 
   // Get recent activity
