@@ -38,6 +38,40 @@ const AcceptedItems = ({ acceptedItems, handleMarkCompleted, handleAbandon, hasM
     return item.department;
   };
 
+  const renderAcceptedByDetails = (item: Request) => {
+    if (!item.acceptedBy) return "None";
+    
+    if (Array.isArray(item.acceptedBy)) {
+      if (item.acceptedBy.length === 0) return "None";
+      if (item.type === "project") {
+        // For projects, show each user with their acceptance status
+        return (
+          <div className="space-y-1">
+            {item.acceptedBy.map((username, idx) => (
+              <div key={idx} className="flex items-center gap-1">
+                <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
+                  {username}
+                </span>
+                {item.participantsCompleted?.includes(username) && (
+                  <Check size={12} className="text-green-500" />
+                )}
+              </div>
+            ))}
+            {item.usersNeeded && item.acceptedBy.length < item.usersNeeded && (
+              <div className="text-xs text-jd-mutedText">
+                Waiting for {item.usersNeeded - item.acceptedBy.length} more participants
+              </div>
+            )}
+          </div>
+        );
+      }
+      return item.acceptedBy.join(", ");
+    }
+    
+    // For regular requests (string)
+    return typeof item.acceptedBy === 'string' ? item.acceptedBy : 'None';
+  };
+
   return (
     <div className="bg-jd-card rounded-lg p-6">
       <h3 className="text-xl font-medium mb-6">Accepted Items</h3>
@@ -85,11 +119,9 @@ const AcceptedItems = ({ acceptedItems, handleMarkCompleted, handleAbandon, hasM
                           </div>
                           <div>
                             <h4 className="text-sm font-medium mb-1">Accepted By:</h4>
-                            <p className="text-jd-mutedText text-sm">
-                              {Array.isArray(item.acceptedBy) 
-                                ? item.acceptedBy.join(", ") 
-                                : item.acceptedBy || 'Unknown'}
-                            </p>
+                            <div className="text-jd-mutedText text-sm">
+                              {renderAcceptedByDetails(item)}
+                            </div>
                           </div>
                         </div>
                       </DialogContent>

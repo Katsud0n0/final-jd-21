@@ -91,11 +91,24 @@ const Requests = () => {
   };
 
   const clearAllRequests = () => {
-    localStorage.removeItem("jd-requests");
-    setRequests([]);
+    if (!user || user.role !== 'admin') return;
+    
+    const storedRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
+    
+    const filteredRequests = storedRequests.filter((req: Request) => {
+      if (Array.isArray(req.departments)) {
+        return !req.departments.includes(user.department);
+      } else {
+        return req.department !== user.department;
+      }
+    });
+    
+    localStorage.setItem("jd-requests", JSON.stringify(filteredRequests));
+    setRequests(filteredRequests);
+    
     toast({
-      title: "All requests cleared",
-      description: "All requests have been cleared from the system.",
+      title: `${user.department} requests cleared`,
+      description: `All requests for your department have been cleared from the system.`,
     });
   };
 
@@ -435,6 +448,40 @@ const Requests = () => {
         </div>
       );
     }
+  };
+
+  const renderAcceptedByDetails = (request: Request) => {
+    if (!request.acceptedBy) return "None";
+    
+    if (Array.isArray(request.acceptedBy)) {
+      if (request.acceptedBy.length === 0) return "None";
+      
+      if (request.type === "project") {
+        return (
+          <div className="space-y-1 mt-1">
+            {request.acceptedBy.map((username, idx) => (
+              <div key={idx} className="flex items-center gap-1">
+                <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
+                  {username}
+                </span>
+                {request.participantsCompleted?.includes(username) && (
+                  <Check size={12} className="text-green-500" />
+                )}
+              </div>
+            ))}
+            {request.usersNeeded && request.acceptedBy.length < request.usersNeeded && (
+              <div className="text-xs text-jd-mutedText mt-1">
+                Waiting for {request.usersNeeded - request.acceptedBy.length} more participants
+              </div>
+            )}
+          </div>
+        );
+      }
+      
+      return request.acceptedBy.join(", ");
+    }
+    
+    return typeof request.acceptedBy === 'string' ? request.acceptedBy : 'None';
   };
 
   const filteredRequests = requests.filter(request => {
@@ -956,21 +1003,18 @@ const Requests = () => {
                 {selectedRequest?.status}
               </span>
             </div>
+            <div>
+              <h4 className="text-sm font-medium mb-1">Accepted By:</h4>
+              <div className="text-jd-mutedText">
+                {selectedRequest && renderAcceptedByDetails(selectedRequest)}
+              </div>
+            </div>
             {selectedRequest?.type === "project" && selectedRequest?.usersNeeded && (
               <div>
                 <h4 className="text-sm font-medium mb-1">Participation:</h4>
                 <p className="text-jd-mutedText">
                   {selectedRequest.usersAccepted || 0} of {selectedRequest.usersNeeded} required users have accepted
                 </p>
-                {selectedRequest.acceptedBy && Array.isArray(selectedRequest.acceptedBy) && (
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {selectedRequest.acceptedBy.map((user) => (
-                      <span key={user} className="bg-jd-bg px-2 py-1 text-xs rounded-full">
-                        {user}
-                      </span>
-                    ))}
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -1009,14 +1053,14 @@ const Requests = () => {
                 variant="destructive" 
                 className="mt-4"
               >
-                Clear All Requests
+                Clear {user?.department} Department Requests
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent className="bg-jd-card border-jd-card">
               <AlertDialogHeader>
-                <AlertDialogTitle>Clear All Requests</AlertDialogTitle>
+                <AlertDialogTitle>Clear Department Requests</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will permanently remove ALL requests from the system. This action cannot be undone.
+                  This will permanently remove ALL requests for the {user?.department} department from the system. This action cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -1025,7 +1069,7 @@ const Requests = () => {
                   className="bg-red-600 hover:bg-red-700"
                   onClick={clearAllRequests}
                 >
-                  Clear All
+                  Clear {user?.department} Requests
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

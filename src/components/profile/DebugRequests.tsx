@@ -1,14 +1,15 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Request } from '@/types/profileTypes';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/use-toast';
 import { 
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger
+  DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -21,6 +22,7 @@ import {
 
 const DebugRequests = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [requests, setRequests] = React.useState<Request[]>([]);
 
   const loadRequests = () => {
@@ -33,6 +35,28 @@ const DebugRequests = () => {
   React.useEffect(() => {
     loadRequests();
   }, []);
+  
+  const clearDepartmentRequests = () => {
+    if (!user?.department || user.role !== 'admin') return;
+    
+    const storedRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
+    const filteredRequests = storedRequests.filter((req: Request) => {
+      // Keep requests that don't belong to this admin's department
+      if (Array.isArray(req.departments)) {
+        return !req.departments.includes(user.department);
+      } else {
+        return req.department !== user.department;
+      }
+    });
+    
+    localStorage.setItem("jd-requests", JSON.stringify(filteredRequests));
+    setRequests(filteredRequests);
+    
+    toast({
+      title: "Department Requests Cleared",
+      description: `All requests for ${user.department} have been cleared.`,
+    });
+  };
 
   return (
     <Dialog>
@@ -84,6 +108,17 @@ const DebugRequests = () => {
             </TableBody>
           </Table>
         </div>
+        {user?.role === 'admin' && (
+          <DialogFooter>
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={clearDepartmentRequests}
+            >
+              Clear {user.department} Department Requests
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );
