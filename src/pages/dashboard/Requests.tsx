@@ -570,7 +570,7 @@ const Requests = () => {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                    d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
                   />
                 </svg>
                 <span>Status: {statusFilter}</span>
@@ -890,4 +890,112 @@ const Requests = () => {
                           <>
                             {request.type === "project" ? (
                               <Button 
-                                size
+                                size="sm"
+                                variant="outline"
+                                className="w-full mt-1"
+                                onClick={() => handleAcceptProject(request)}
+                              >
+                                <Check size={14} className="mr-1" /> Accept Project
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full mt-1"
+                                onClick={() => handleStatusChange(request.id, "In Process")}
+                              >
+                                <Check size={14} className="mr-1" /> Accept Request
+                              </Button>
+                            )}
+                          </>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={8} className="px-4 py-8 text-center text-jd-mutedText">
+                    No requests found matching your filters.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <AlertDialog open={acceptDialogOpen} onOpenChange={setAcceptDialogOpen}>
+        <AlertDialogContent className="bg-jd-card border-jd-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Accept Project</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to accept this project? You will be added as a participant.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-jd-bg hover:bg-jd-bg/80">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-jd-green hover:bg-jd-green/90"
+              onClick={confirmAcceptProject}
+            >
+              Accept
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
+        <DialogContent className="bg-jd-card border-jd-card">
+          <DialogHeader>
+            <DialogTitle>{selectedRequest?.title}</DialogTitle>
+          </DialogHeader>
+          {selectedRequest && (
+            <div className="space-y-4 mt-2">
+              <div>
+                <h4 className="text-sm font-medium mb-2">Required Departments:</h4>
+                <div className="flex flex-wrap gap-1">
+                  {Array.isArray(selectedRequest.departments) 
+                    ? selectedRequest.departments.map(dept => (
+                      <span key={dept} className="bg-jd-bg text-xs px-2 py-1 rounded-full">
+                        {dept}
+                      </span>
+                    ))
+                    : (
+                      <span className="bg-jd-bg text-xs px-2 py-1 rounded-full">
+                        {selectedRequest.department}
+                      </span>
+                    )}
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="text-sm font-medium mb-2">Description:</h4>
+                <p className="text-jd-mutedText text-sm">{selectedRequest.description}</p>
+              </div>
+              
+              <div>
+                <h4 className="text-sm font-medium mb-2">Created by:</h4>
+                <p className="text-jd-mutedText text-sm">
+                  {selectedRequest.creator}
+                  {selectedRequest.creatorDepartment && (
+                    <span className="italic"> ({selectedRequest.creatorDepartment})</span>
+                  )}
+                </p>
+              </div>
+              
+              {selectedRequest.type === "project" && (
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Participants:</h4>
+                  {renderAcceptedByDetails(selectedRequest)}
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default Requests;
