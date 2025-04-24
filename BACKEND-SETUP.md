@@ -89,6 +89,7 @@ db.serialize(() => {
       lastStatusUpdateTime TEXT,
       usersNeeded INTEGER DEFAULT 0,
       usersAccepted INTEGER DEFAULT 0,
+      participantsCompleted TEXT, -- JSON array of users who completed
       relatedProject TEXT,
       FOREIGN KEY(department) REFERENCES departments(name),
       FOREIGN KEY(creator) REFERENCES users(username)

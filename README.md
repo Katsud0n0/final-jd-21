@@ -1,4 +1,3 @@
-
 # JD Frameworks – Project Dashboard Platform
 
 ## 📚 Project Overview
@@ -99,7 +98,7 @@ To use SQLite for persistent storage:
    );
 
    -- Requests table
-   CREATE TABLE requests (
+   CREATE TABLE IF NOT EXISTS requests (
      id TEXT PRIMARY KEY,
      title TEXT,
      description TEXT,
@@ -113,7 +112,7 @@ To use SQLite for persistent storage:
      usersNeeded INTEGER,
      usersAccepted INTEGER DEFAULT 0,
      participants TEXT, -- JSON array of participants (usernames)
-     participantsCompleted TEXT, -- JSON array of users who completed
+     participantsCompleted TEXT, -- JSON array of users who completed the request/project
      archived INTEGER DEFAULT 0,
      archivedAt TEXT,
      isExpired INTEGER DEFAULT 0,
@@ -238,4 +237,3 @@ npm run dev
 
 **All user profile, requests, and project flows (including admin/client permission enforcement, department restrictions and proper project logic) are now reflected in this README.**  
 For help, contact [Lovable support](https://lovable.dev).
-
