@@ -1,5 +1,4 @@
-
-# JD Frameworks - Backend Implementation Guide
+# JD Frameworks – Backend Implementation Guide
 
 This guide provides the complete setup and implementation code for connecting your JD Frameworks frontend to a SQLite backend.
 
@@ -399,23 +398,35 @@ app.get('/api/departments', async (req, res) => {
 // 3. Request Routes
 app.get('/api/requests', async (req, res) => {
   try {
-    // Get all requests
+    // Get all requests with their participants
     const requests = await runQuery(`
       SELECT r.*, 
-        (SELECT GROUP_CONCAT(username) 
-         FROM request_participants 
-         WHERE requestId = r.id AND hasAccepted = 1) as acceptedBy,
-        (SELECT GROUP_CONCAT(username) 
-         FROM request_participants 
-         WHERE requestId = r.id AND hasCompleted = 1) as completedBy
+        GROUP_CONCAT(DISTINCT p.username) as acceptedBy,
+        GROUP_CONCAT(DISTINCT CASE WHEN p.hasCompleted = 1 THEN p.username END) as completedBy
       FROM requests r
-      ORDER BY createdAt DESC
+      LEFT JOIN request_participants p ON r.id = p.requestId AND p.hasAccepted = 1
+      GROUP BY r.id
+      ORDER BY r.createdAt DESC
     `);
     
-    // Convert group_concat results to arrays and parse JSON fields
+    // Process each request to ensure consistent acceptedBy format
     requests.forEach(request => {
-      request.acceptedBy = request.acceptedBy ? request.acceptedBy.split(',') : [];
-      request.completedBy = request.completedBy ? request.completedBy.split(',') : [];
+      // For regular requests, store acceptedBy as string (single user)
+      if (request.type === 'request') {
+        const acceptedUsers = request.acceptedBy ? request.acceptedBy.split(',') : [];
+        request.acceptedBy = acceptedUsers[0] || null; // Take first user or null
+      } 
+      // For projects, store acceptedBy as array
+      else if (request.type === 'project') {
+        request.acceptedBy = request.acceptedBy ? request.acceptedBy.split(',') : [];
+        // Ensure creator is included in acceptedBy for projects
+        if (!request.acceptedBy.includes(request.creator)) {
+          request.acceptedBy.push(request.creator);
+        }
+      }
+      
+      // Always keep completedBy as array
+      request.completedBy = request.completedBy ? request.completedBy.split(',').filter(Boolean) : [];
       
       // Parse departments JSON if it exists
       if (request.departments) {
@@ -426,11 +437,6 @@ app.get('/api/requests', async (req, res) => {
         }
       } else {
         request.departments = [request.department];
-      }
-      
-      // For projects, confirm creator is automatically included
-      if (request.type === 'project' && !request.acceptedBy.includes(request.creator)) {
-        request.acceptedBy.push(request.creator);
       }
     });
     
@@ -587,7 +593,7 @@ app.post('/api/requests/:id/accept', async (req, res) => {
       return res.status(400).json({ error: 'Username is required' });
     }
     
-    // Check if request exists and get its details
+    // Get request details first
     const existingRequest = await runQuery('SELECT * FROM requests WHERE id = ?', [requestId]);
     if (existingRequest.length === 0) {
       return res.status(404).json({ error: 'Request not found' });
@@ -595,34 +601,33 @@ app.post('/api/requests/:id/accept', async (req, res) => {
     
     const request = existingRequest[0];
     
-    // Check if the user has already accepted
-    const existingParticipant = await runQuery(
-      'SELECT * FROM request_participants WHERE requestId = ? AND username = ?',
-      [requestId, username]
-    );
-    
-    if (existingParticipant.length > 0) {
-      return res.status(400).json({ error: 'You have already accepted this request' });
-    }
-    
-    // Check if project is full (for project type)
-    if (request.type === 'project') {
+    // For regular requests, ensure only one user can accept
+    if (request.type === 'request') {
       const currentAccepted = await runQuery(
         'SELECT COUNT(*) as count FROM request_participants WHERE requestId = ? AND hasAccepted = 1',
         [requestId]
       );
       
-      // Add 1 for the creator if they're not already counted
-      let totalAccepted = currentAccepted[0].count;
+      if (currentAccepted[0].count > 0) {
+        return res.status(400).json({ error: 'This request has already been accepted by another user' });
+      }
+    }
+    // For projects, check maximum participants
+    else if (request.type === 'project') {
+      const currentAccepted = await runQuery(
+        'SELECT COUNT(*) as count FROM request_participants WHERE requestId = ? AND hasAccepted = 1',
+        [requestId]
+      );
       
-      // Check if creator is in participants list
-      const creatorExists = await runQuery(
+      // Include creator in count if not already counted
+      let totalAccepted = currentAccepted[0].count;
+      const creatorParticipant = await runQuery(
         'SELECT * FROM request_participants WHERE requestId = ? AND username = ?',
         [requestId, request.creator]
       );
       
-      if (creatorExists.length === 0) {
-        totalAccepted += 1; // Account for creator who is automatically added
+      if (creatorParticipant.length === 0) {
+        totalAccepted += 1;
       }
       
       if (totalAccepted >= request.usersNeeded) {
@@ -630,34 +635,32 @@ app.post('/api/requests/:id/accept', async (req, res) => {
       }
     }
     
-    // Add user as a participant
+    // Add user as participant
     const now = new Date().toISOString();
     await runCommand(
       'INSERT INTO request_participants (requestId, username, hasAccepted, acceptedAt) VALUES (?, ?, 1, ?)',
       [requestId, username, now]
     );
     
-    // Update the usersAccepted count in the request
-    await runCommand(
-      'UPDATE requests SET usersAccepted = usersAccepted + 1 WHERE id = ?',
-      [requestId]
-    );
-    
-    // If all users needed are accepted, update status to In Process
-    if (request.type === 'project') {
-      const updatedRequest = await runQuery('SELECT * FROM requests WHERE id = ?', [requestId]);
-      if (updatedRequest[0].usersAccepted >= updatedRequest[0].usersNeeded) {
+    // Update request status
+    if (request.type === 'request') {
+      await runCommand(
+        'UPDATE requests SET status = ?, lastStatusUpdate = ?, lastStatusUpdateTime = ? WHERE id = ?',
+        ['In Process', new Date().toLocaleDateString('en-GB'), now, requestId]
+      );
+    } else {
+      // For projects, check if we've reached required participants
+      const updatedParticipants = await runQuery(
+        'SELECT COUNT(*) as count FROM request_participants WHERE requestId = ? AND hasAccepted = 1',
+        [requestId]
+      );
+      
+      if (updatedParticipants[0].count + 1 >= request.usersNeeded) { // +1 for creator
         await runCommand(
           'UPDATE requests SET status = ?, lastStatusUpdate = ?, lastStatusUpdateTime = ? WHERE id = ?',
           ['In Process', new Date().toLocaleDateString('en-GB'), now, requestId]
         );
       }
-    } else {
-      // For regular requests, update to In Process immediately when accepted
-      await runCommand(
-        'UPDATE requests SET status = ?, lastStatusUpdate = ?, lastStatusUpdateTime = ? WHERE id = ?',
-        ['In Process', new Date().toLocaleDateString('en-GB'), now, requestId]
-      );
     }
     
     res.json({ message: 'Request accepted successfully' });
@@ -816,29 +819,24 @@ app.get('/api/requests/user/:username', async (req, res) => {
     // Get requests created by this user
     const createdRequests = await runQuery(`
       SELECT r.*, 
-        (SELECT GROUP_CONCAT(username) 
-         FROM request_participants 
-         WHERE requestId = r.id AND hasAccepted = 1) as acceptedBy,
-        (SELECT GROUP_CONCAT(username) 
-         FROM request_participants 
-         WHERE requestId = r.id AND hasCompleted = 1) as completedBy
+        GROUP_CONCAT(DISTINCT p.username) as acceptedBy,
+        GROUP_CONCAT(DISTINCT CASE WHEN p.hasCompleted = 1 THEN p.username END) as completedBy
       FROM requests r
+      LEFT JOIN request_participants p ON r.id = p.requestId AND p.hasAccepted = 1
       WHERE r.creator = ?
+      GROUP BY r.id
       ORDER BY r.createdAt DESC
     `, [username]);
     
     // Get requests accepted by this user
     const acceptedRequests = await runQuery(`
       SELECT r.*, 
-        (SELECT GROUP_CONCAT(username) 
-         FROM request_participants 
-         WHERE requestId = r.id AND hasAccepted = 1) as acceptedBy,
-        (SELECT GROUP_CONCAT(username) 
-         FROM request_participants 
-         WHERE requestId = r.id AND hasCompleted = 1) as completedBy
+        GROUP_CONCAT(DISTINCT p.username) as acceptedBy,
+        GROUP_CONCAT(DISTINCT CASE WHEN p.hasCompleted = 1 THEN p.username END) as completedBy
       FROM requests r
       INNER JOIN request_participants p ON r.id = p.requestId
       WHERE p.username = ? AND p.hasAccepted = 1 AND r.creator != ?
+      GROUP BY r.id
       ORDER BY r.createdAt DESC
     `, [username, username]);
     
