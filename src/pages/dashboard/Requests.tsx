@@ -47,6 +47,8 @@ const Requests = () => {
     handleArchive,
     handleAcceptProject,
     confirmDelete,
+    confirmAcceptProject,
+    clearAllRequests,
     canEditStatus,
     canDeleteRequest,
     canArchiveProject,
@@ -61,6 +63,7 @@ const Requests = () => {
         dialogOpen={dialogOpen}
         setDialogOpen={setDialogOpen}
         handleRequestSuccess={handleRequestSuccess}
+        clearAllRequests={clearAllRequests}
       />
 
       <Tabs defaultValue="all" onValueChange={value => setActiveTab(value)}>
@@ -108,7 +111,7 @@ const Requests = () => {
             <AlertDialogCancel className="bg-jd-bg hover:bg-jd-bg/80">Cancel</AlertDialogCancel>
             <AlertDialogAction 
               className="bg-jd-green hover:bg-jd-green/90"
-              onClick={confirmDelete}
+              onClick={confirmAcceptProject}
             >
               Accept
             </AlertDialogAction>

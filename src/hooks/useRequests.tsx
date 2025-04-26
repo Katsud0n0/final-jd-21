@@ -297,12 +297,15 @@ export const useRequests = () => {
   const canAcceptRequest = (request: Request) => {
     if (!user || !request) return false;
 
+    // For client users, allow accepting requests that are pending and not archived
+    // Users shouldn't be able to accept their own requests
     const basicConditions = user.role === "client" && 
                            request.status === "Pending" && 
                            !request.archived;
     
     if (!basicConditions) return false;
     
+    // Make sure the request is for the user's department
     if (!isUserDepartmentIncluded(request)) {
       return false;
     }
@@ -481,6 +484,8 @@ export const useRequests = () => {
     handleArchive,
     handleAcceptProject,
     confirmDelete,
+    confirmAcceptProject,
+    clearAllRequests,
     canEditStatus,
     canDeleteRequest,
     canArchiveProject,
