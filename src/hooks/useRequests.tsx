@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -259,7 +260,8 @@ export const useRequests = () => {
       
       const updatedRequests = requests.map(r => {
         if (r.id === id) {
-          const newStatus = r.status === "In Process" && currentAcceptedBy.length === 0 ? "Pending" : r.status;
+          // Always set status back to Pending when all users have abandoned
+          const newStatus = currentAcceptedBy.length === 0 ? "Pending" : r.status;
           
           return {
             ...r,
@@ -360,6 +362,10 @@ export const useRequests = () => {
     const updatedAcceptedBy = [...currentAcceptedBy, user.username];
     const updatedUsersAccepted = (project.usersAccepted || 0) + 1;
     
+    // Update status to "In Process" if:
+    // 1. The project is Pending or Rejected
+    // 2. It's a multi-department request and has enough users
+    // 3. It's not a multi-department request (single department case)
     const shouldUpdateStatus = (
       (project.status === "Pending" || project.status === "Rejected") && 
       (
@@ -413,6 +419,7 @@ export const useRequests = () => {
   const canAcceptRequest = (request: Request) => {
     if (!user || !request || user.role !== "client") return false;
 
+    // Allow accepting requests in Pending or Rejected status
     const isPendingOrRejected = request.status === "Pending" || request.status === "Rejected";
     const notArchived = !request.archived;
     const isNotCreator = request.creator !== user.username;
@@ -495,8 +502,8 @@ export const useRequests = () => {
       if (depts.length <= maxDisplayed) {
         return (
           <div className="flex flex-wrap gap-1">
-            {depts.map(dept => (
-              <span key={dept} className="bg-jd-bg text-xs px-2 py-1 rounded-full">
+            {depts.map((dept, idx) => (
+              <span key={idx} className="bg-jd-bg text-xs px-2 py-1 rounded-full">
                 {dept}
               </span>
             ))}
@@ -508,8 +515,8 @@ export const useRequests = () => {
         
         return (
           <div className="flex flex-wrap gap-1">
-            {displayed.map(dept => (
-              <span key={dept} className="bg-jd-bg text-xs px-2 py-1 rounded-full">
+            {displayed.map((dept, idx) => (
+              <span key={idx} className="bg-jd-bg text-xs px-2 py-1 rounded-full">
                 {dept}
               </span>
             ))}
@@ -528,8 +535,8 @@ export const useRequests = () => {
     if (!Array.isArray(depts) || depts.length <= maxDisplayed) {
       return (
         <div className="flex flex-wrap gap-1">
-          {Array.isArray(depts) ? depts.map(dept => (
-            <span key={dept} className="bg-jd-bg text-xs px-2 py-1 rounded-full">
+          {Array.isArray(depts) ? depts.map((dept, idx) => (
+            <span key={idx} className="bg-jd-bg text-xs px-2 py-1 rounded-full">
               {dept}
             </span>
           )) : (
@@ -545,8 +552,8 @@ export const useRequests = () => {
       
       return (
         <div className="flex flex-wrap gap-1">
-          {displayed.map(dept => (
-            <span key={dept} className="bg-jd-bg text-xs px-2 py-1 rounded-full">
+          {displayed.map((dept, idx) => (
+            <span key={idx} className="bg-jd-bg text-xs px-2 py-1 rounded-full">
               {dept}
             </span>
           ))}

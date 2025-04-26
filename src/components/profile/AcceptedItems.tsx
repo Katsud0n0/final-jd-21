@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 interface AcceptedItemsProps {
   acceptedItems: Request[];
@@ -34,7 +34,7 @@ const AcceptedItems = ({ acceptedItems, handleMarkCompleted, handleAbandon, hasM
 
   const renderDepartments = (item: Request) => {
     if (item.departments && Array.isArray(item.departments)) {
-      const maxDisplayed = l; // Show at most 2 departments, then show "+X more"
+      const maxDisplayed = 2; // Show at most 2 departments, then show "+X more"
       const total = item.departments.length;
       
       if (total <= maxDisplayed) {

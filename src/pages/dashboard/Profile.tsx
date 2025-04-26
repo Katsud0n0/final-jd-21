@@ -1,9 +1,10 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Archive } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Request } from "@/types/profileTypes";
 
 // Import the refactored components
@@ -123,8 +124,6 @@ const Profile = () => {
     // In Process status is required for all
     if (r.status !== "In Process") return false;
     
-    console.log(`Checking request ${r.id} - ${r.title} - acceptedBy:`, r.acceptedBy);
-    
     // Project type
     if (r.type === "project") {
       // Check if user is in acceptedBy array
@@ -145,10 +144,6 @@ const Profile = () => {
     
     return false;
   });
-
-  console.log("User:", user?.username);
-  console.log("Accepted Items:", acceptedItems);
-  console.log("All Requests:", requests);
 
   // Get history items (completed or rejected)
   const historyItems = requests.filter((r: Request) => {

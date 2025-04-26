@@ -132,9 +132,14 @@ const RequestsTable = ({
                                 <div className="flex flex-wrap gap-1">
                                   {Array.isArray(request.acceptedBy) ? (
                                     request.acceptedBy.map((user, idx) => (
-                                      <span key={idx} className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
-                                        {user}
-                                      </span>
+                                      <div key={idx} className="flex items-center gap-1">
+                                        <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
+                                          {user}
+                                        </span>
+                                        {request.participantsCompleted?.includes(user) && (
+                                          <Check size={12} className="text-green-500" />
+                                        )}
+                                      </div>
                                     ))
                                   ) : (
                                     <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
@@ -147,7 +152,7 @@ const RequestsTable = ({
                               )}
                             </div>
                             
-                            {request.status === "Rejected" && request.type === "request" && (
+                            {request.type === "request" && (
                               <div className="mt-2 p-2 bg-red-100 text-red-800 text-xs rounded-md">
                                 If rejected, please submit a new request to restart
                               </div>
