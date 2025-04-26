@@ -1,7 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Request } from "@/types/profileTypes";
+import { Check } from "lucide-react";
 
 export const useRequests = () => {
   const { toast } = useToast();
