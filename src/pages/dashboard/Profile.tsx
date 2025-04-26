@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -122,7 +123,7 @@ const Profile = () => {
 
   // Accepted projects and requests - modified for multi-department behavior
   const acceptedItems = requests.filter((r: Request) => {
-    // For multi-department requests, show if user is in acceptedBy array regardless of status
+    // For multi-department requests or projects, show if user is in acceptedBy array regardless of status
     if (r.multiDepartment || r.type === "project") {
       return r.acceptedBy && Array.isArray(r.acceptedBy) && r.acceptedBy.includes(user?.username || '');
     }
@@ -310,6 +311,7 @@ const Profile = () => {
           const newUsersAccepted = Math.max((r.usersAccepted || 0) - 1, 0);
           
           // Always set to Pending when any user rejects for multi-dept or project
+          // or if user count drops below 2
           const newStatus = "Pending";
           
           // Remove user from participants completed as well

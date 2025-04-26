@@ -136,7 +136,7 @@ const AcceptedItems = ({
                     size="sm"
                     variant="outline"
                     className={`border-green-500 text-green-500 hover:bg-green-500/10
-                      ${hasMarkedCompleted(item) ? 'bg-green-500/10 cursor-not-allowed opacity-50' : ''}`}
+                      ${hasMarkedCompleted(item) ? 'bg-green-500/10' : ''}`}
                     onClick={() => handleMarkCompleted(item.id)}
                     disabled={hasMarkedCompleted(item)}
                   >

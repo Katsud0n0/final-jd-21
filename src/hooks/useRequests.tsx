@@ -15,7 +15,6 @@ export const useRequests = () => {
   const [requestToReject, setRequestToReject] = useState<string | null>(null);
   const [requestTypeToReject, setRequestTypeToReject] = useState<'request' | 'project' | 'multi-department'>('request');
 
-  // Import refactored hooks
   const { 
     searchTerm, 
     setSearchTerm, 
@@ -105,7 +104,6 @@ export const useRequests = () => {
     let updated = false;
     
     const updatedRequests = storedRequests.map((req: Request) => {
-      // Check completed/rejected items for expiry
       if ((req.status === "Completed" || req.status === "Rejected") && req.lastStatusUpdate) {
         const statusUpdateDate = new Date(req.lastStatusUpdate);
         const oneDayLater = new Date(statusUpdateDate);
@@ -117,19 +115,16 @@ export const useRequests = () => {
         }
       } 
       
-      // Remove expired items
       if (req.isExpired) {
         updated = true;
         return null;
       }
       
-      // Skip non-pending items
       if (req.status !== "Pending") return req;
       
       const createdDate = new Date(req.createdAt || req.dateCreated);
       
       if (req.type === "request") {
-        // Use 45 days for multi-department requests, 30 for regular requests
         const expiryDays = req.multiDepartment ? 45 : 30;
         const expiryDate = new Date(createdDate);
         expiryDate.setDate(expiryDate.getDate() + expiryDays);
@@ -182,6 +177,99 @@ export const useRequests = () => {
     });
   };
 
+  const handleAcceptProject = (request: Request) => {
+    if (!request.multiDepartment && request.type !== "project") {
+      const currentAcceptedBy = Array.isArray(request.acceptedBy) ? request.acceptedBy : [];
+      if (currentAcceptedBy.length > 0) {
+        toast({
+          title: "Request already accepted",
+          description: "This request has already been accepted by another user.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+    
+    initHandleAcceptProject(request);
+  };
+
+  const confirmAcceptProject = () => {
+    if (!projectToAccept || !user) {
+      setAcceptDialogOpen(false);
+      return;
+    }
+
+    const now = new Date();
+    const projectIndex = requests.findIndex(r => r.id === projectToAccept);
+    
+    if (projectIndex === -1) {
+      setAcceptDialogOpen(false);
+      return;
+    }
+
+    const project = requests[projectIndex];
+    
+    if (!project.multiDepartment && project.type !== "project") {
+      const currentAcceptedBy = Array.isArray(project.acceptedBy) ? project.acceptedBy : [];
+      if (currentAcceptedBy.length > 0) {
+        toast({
+          title: "Request already accepted",
+          description: "This request has already been accepted by another user.",
+          variant: "destructive"
+        });
+        setAcceptDialogOpen(false);
+        return;
+      }
+    }
+    
+    const currentAcceptedBy = Array.isArray(project.acceptedBy) ? project.acceptedBy : [];
+    
+    if (currentAcceptedBy.includes(user.username)) {
+      toast({
+        title: "Already accepted",
+        description: "You have already accepted this request.",
+      });
+      setAcceptDialogOpen(false);
+      return;
+    }
+    
+    const updatedAcceptedBy = [...currentAcceptedBy, user.username];
+    const updatedUsersAccepted = (project.usersAccepted || 0) + 1;
+    
+    const shouldUpdateStatus = 
+      (
+        (project.multiDepartment || project.type === "project") && updatedUsersAccepted >= 2
+      ) ||
+      (!project.multiDepartment && project.type !== "project");
+    
+    const updatedProject = {
+      ...project,
+      acceptedBy: updatedAcceptedBy,
+      usersAccepted: updatedUsersAccepted,
+      status: shouldUpdateStatus ? "In Process" : "Pending",
+      ...(shouldUpdateStatus && {
+        lastStatusUpdate: now.toISOString(),
+        lastStatusUpdateTime: now.toLocaleTimeString(),
+      })
+    };
+    
+    const updatedRequests = [...requests];
+    updatedRequests[projectIndex] = updatedProject;
+    
+    setRequests(updatedRequests);
+    localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+    
+    toast({
+      title: "Accepted",
+      description: shouldUpdateStatus 
+        ? `You've accepted the ${project.type}. It has now moved to In Process status.` 
+        : `You've accepted the ${project.type}. It needs more users before it can start.`,
+    });
+    
+    setAcceptDialogOpen(false);
+    setProjectToAccept(null);
+  };
+
   const handleStatusChange = (requestId: string, newStatus: string) => {
     if (!user) return;
     
@@ -197,48 +285,57 @@ export const useRequests = () => {
       return;
     }
 
-    // For multi-department requests or projects, handle the completion logic differently
-    if ((requestToUpdate?.multiDepartment || requestToUpdate?.type === "project") && newStatus === "Completed") {
-      const participantsCompleted = requestToUpdate.participantsCompleted || [];
-      
-      // Add current user to the completed participants if not already there
-      if (!participantsCompleted.includes(user.username)) {
-        const updatedParticipantsCompleted = [...participantsCompleted, user.username];
+    if ((requestToUpdate?.multiDepartment || requestToUpdate?.type === "project")) {
+      if (newStatus === "Completed") {
+        const participantsCompleted = requestToUpdate.participantsCompleted || [];
         
-        // Only change status to Completed if all required participants have completed
+        if (!participantsCompleted.includes(user.username)) {
+          const updatedParticipantsCompleted = [...participantsCompleted, user.username];
+          
+          const acceptedBy = Array.isArray(requestToUpdate.acceptedBy) ? requestToUpdate.acceptedBy : [];
+          const shouldCompleteRequest = updatedParticipantsCompleted.length >= acceptedBy.length && acceptedBy.length >= 2;
+          
+          const updatedRequests = requests.map(r => {
+            if (r.id === requestId) {
+              return {
+                ...r,
+                participantsCompleted: updatedParticipantsCompleted,
+                ...(shouldCompleteRequest && { 
+                  status: "Completed",
+                  lastStatusUpdate: now.toISOString(),
+                  lastStatusUpdateTime: now.toLocaleTimeString()
+                })
+              };
+            }
+            return r;
+          });
+          
+          setRequests(updatedRequests);
+          localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+          
+          toast({
+            title: shouldCompleteRequest ? "Request completed" : "Progress saved",
+            description: shouldCompleteRequest 
+              ? "All participants have marked this as complete." 
+              : "Other participants need to mark as completed as well.",
+          });
+          
+          return;
+        }
+      } else if (newStatus === "In Process") {
         const acceptedBy = Array.isArray(requestToUpdate.acceptedBy) ? requestToUpdate.acceptedBy : [];
-        const shouldCompleteRequest = updatedParticipantsCompleted.length >= acceptedBy.length && acceptedBy.length >= 2;
         
-        const updatedRequests = requests.map(r => {
-          if (r.id === requestId) {
-            return {
-              ...r,
-              participantsCompleted: updatedParticipantsCompleted,
-              ...(shouldCompleteRequest && { 
-                status: "Completed",
-                lastStatusUpdate: now.toISOString(),
-                lastStatusUpdateTime: now.toLocaleTimeString()
-              })
-            };
-          }
-          return r;
-        });
-        
-        setRequests(updatedRequests);
-        localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
-        
-        toast({
-          title: shouldCompleteRequest ? "Request completed" : "Progress saved",
-          description: shouldCompleteRequest 
-            ? "All participants have marked this as complete." 
-            : "Other participants need to mark as completed as well.",
-        });
-        
-        return;
+        if (acceptedBy.length < 2) {
+          toast({
+            title: "Cannot change status",
+            description: `${requestToUpdate.type === "project" ? "Projects" : "Multi-department requests"} need at least 2 participants to be In Process.`,
+            variant: "destructive"
+          });
+          return;
+        }
       }
     }
     
-    // Handle regular status changes
     const updatedRequests = requests.map(r => {
       if (r.id === requestId) {
         const updatedRequest = { 
@@ -250,7 +347,6 @@ export const useRequests = () => {
         };
         
         if (newStatus === "In Process" && (!r.multiDepartment && r.type !== "project")) {
-          // For single department requests, just set one acceptedBy
           updatedRequest.acceptedBy = [user.username];
           updatedRequest.usersAccepted = 1;
         } else if (newStatus === "In Process" && (r.type === "request" || r.multiDepartment)) {
@@ -275,7 +371,7 @@ export const useRequests = () => {
       description: "The request status has been updated successfully.",
     });
   };
-  
+
   const handleArchive = (id: string) => {
     const updatedRequests = requests.map(r => 
       r.id === id ? { ...r, archived: true, archivedAt: new Date().toISOString() } : r
@@ -289,7 +385,7 @@ export const useRequests = () => {
     });
   };
 
-  const initiateAbandon = (id: string, type: string) => {
+  const initiateAbandon = (id: string, type: string = 'request') => {
     setRequestToReject(id);
     setRequestTypeToReject(type === 'project' ? 'project' : 
                         type === 'multi' ? 'multi-department' : 'request');
@@ -310,7 +406,6 @@ export const useRequests = () => {
       return;
     }
     
-    // For multi-department requests or projects
     if (request.multiDepartment || request.type === "project") {
       const currentAcceptedBy = Array.isArray(request.acceptedBy) ? [...request.acceptedBy] : [];
       const userIndex = currentAcceptedBy.indexOf(user.username);
@@ -324,19 +419,15 @@ export const useRequests = () => {
         return;
       }
       
-      // Store formatted date for rejection
       const now = new Date();
       const formattedDate = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
       
-      // Remove the user from acceptedBy list
       currentAcceptedBy.splice(userIndex, 1);
       
-      // Remove from participants completed list if present
       const participantsCompleted = request.participantsCompleted ? 
         request.participantsCompleted.filter(username => username !== user.username) : 
         [];
       
-      // Store rejection info
       const rejections = request.rejections || [];
       rejections.push({
         username: user.username,
@@ -346,14 +437,13 @@ export const useRequests = () => {
       
       const updatedRequests = requests.map(r => {
         if (r.id === id) {
-          // Always set status to Pending when any user abandons for multi-dept or project
-          // or if number of participants falls below 2
+          const newStatus = "Pending";
           return {
             ...r,
             acceptedBy: currentAcceptedBy,
             usersAccepted: Math.max((r.usersAccepted || 0) - 1, 0),
             participantsCompleted: participantsCompleted,
-            status: "Pending", // Always set to pending
+            status: newStatus,
             lastStatusUpdate: now.toISOString(),
             lastStatusUpdateTime: now.toLocaleTimeString(),
             rejections
@@ -372,7 +462,6 @@ export const useRequests = () => {
       return;
     }
     
-    // For single department requests, store rejection info
     const now = new Date();
     const formattedDate = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
     
@@ -391,7 +480,7 @@ export const useRequests = () => {
           lastStatusUpdate: now.toISOString(),
           lastStatusUpdateTime: now.toLocaleTimeString(),
           statusChangedBy: user.username,
-          acceptedBy: [], // Clear acceptedBy for rejected single requests
+          acceptedBy: [],
           usersAccepted: 0,
           rejections
         };
@@ -431,110 +520,10 @@ export const useRequests = () => {
     }
   };
 
-  const handleAcceptProject = (request: Request) => {
-    // For single department requests, don't allow accepting if already accepted by someone
-    if (!request.multiDepartment && request.type !== "project") {
-      const currentAcceptedBy = Array.isArray(request.acceptedBy) ? request.acceptedBy : [];
-      if (currentAcceptedBy.length > 0) {
-        toast({
-          title: "Request already accepted",
-          description: "This request has already been accepted by another user.",
-          variant: "destructive"
-        });
-        return;
-      }
-    }
-    
-    initHandleAcceptProject(request);
-  };
-
-  const confirmAcceptProject = () => {
-    if (!projectToAccept || !user) {
-      setAcceptDialogOpen(false);
-      return;
-    }
-
-    const now = new Date();
-    const projectIndex = requests.findIndex(r => r.id === projectToAccept);
-    
-    if (projectIndex === -1) {
-      setAcceptDialogOpen(false);
-      return;
-    }
-
-    const project = requests[projectIndex];
-    
-    // For single department requests, don't allow accepting if already accepted by someone
-    if (!project.multiDepartment && project.type !== "project") {
-      const currentAcceptedBy = Array.isArray(project.acceptedBy) ? project.acceptedBy : [];
-      if (currentAcceptedBy.length > 0) {
-        toast({
-          title: "Request already accepted",
-          description: "This request has already been accepted by another user.",
-          variant: "destructive"
-        });
-        setAcceptDialogOpen(false);
-        return;
-      }
-    }
-    
-    const currentAcceptedBy = Array.isArray(project.acceptedBy) ? project.acceptedBy : [];
-    
-    if (currentAcceptedBy.includes(user.username)) {
-      toast({
-        title: "Already accepted",
-        description: "You have already accepted this request.",
-      });
-      setAcceptDialogOpen(false);
-      return;
-    }
-    
-    const updatedAcceptedBy = [...currentAcceptedBy, user.username];
-    const updatedUsersAccepted = (project.usersAccepted || 0) + 1;
-    
-    // Update status to "In Process" if:
-    // 1. It's a multi-department request/project and has 2+ users
-    // 2. It's not a multi-department request (single department case)
-    const shouldUpdateStatus = 
-      (
-        (project.multiDepartment || project.type === "project") && updatedUsersAccepted >= 2
-      ) ||
-      (!project.multiDepartment && project.type !== "project");
-    
-    const updatedProject = {
-      ...project,
-      acceptedBy: updatedAcceptedBy,
-      usersAccepted: updatedUsersAccepted,
-      status: shouldUpdateStatus ? "In Process" : "Pending", // Keep as Pending if not enough users
-      ...(shouldUpdateStatus && {
-        lastStatusUpdate: now.toISOString(),
-        lastStatusUpdateTime: now.toLocaleTimeString(),
-      })
-    };
-    
-    const updatedRequests = [...requests];
-    updatedRequests[projectIndex] = updatedProject;
-    
-    setRequests(updatedRequests);
-    localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
-    
-    toast({
-      title: "Accepted",
-      description: shouldUpdateStatus 
-        ? `You've accepted the ${project.type}. It has now moved to In Process status.` 
-        : `You've accepted the ${project.type}. It needs more users before it can start.`,
-    });
-    
-    setAcceptDialogOpen(false);
-    setProjectToAccept(null);
-  };
-
-  // Customize renderDepartmentTags to use the openDetailsDialog from this hook
   const renderDepartmentTags = (request: Request) => {
     return initRenderDepartmentTags(request, openDetailsDialog);
   };
 
-  // Filter requests based on current filters
   const filteredRequests = filterRequests(requests);
 
   return {

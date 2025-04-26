@@ -104,7 +104,7 @@ const Requests = () => {
         handleStatusChange={handleStatusChange}
         handleDelete={handleDelete}
         handleArchive={handleArchive}
-        handleAbandon={initiateAbandon}
+        handleAbandon={(id: string) => initiateAbandon(id, 'request')} // Fixed type error here
         handleAcceptProject={handleAcceptProject}
         confirmDelete={confirmDelete}
         renderDepartmentTags={renderDepartmentTags}
@@ -200,7 +200,6 @@ const Requests = () => {
                 <p className="text-jd-mutedText text-sm">{selectedRequest.description}</p>
               </div>
               
-              {/* Display request notes if available */}
               {selectedRequest.notes && (
                 <div>
                   <h4 className="text-sm font-medium mb-1">Notes:</h4>

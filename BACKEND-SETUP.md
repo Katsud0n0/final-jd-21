@@ -1,6 +1,4 @@
 
-
-
 # Backend Setup Guide
 
 ## Project Requirements and Workflow
@@ -50,6 +48,19 @@
 - Optional rejection reasons are captured via modal and displayed to request creators
 - Rejection notes can be hidden individually or cleared all at once by the request creator
 
+### Status Transitions
+- Projects and multi-department requests require at least 2 participating users to move to "In Process" status
+- When a participant leaves a project or multi-department request, it immediately returns to "Pending" status
+- Only after all participants mark a project or multi-department request as completed does it change to "Completed" status
+- Individual completion status is tracked per user and visually indicated in the interface
+
+### Rejection Notes System
+- When rejecting any request or project, users are prompted for an optional rejection reason
+- Reasons are stored with username and timestamp
+- All rejection notes are displayed to the request creator in their profile under "Rejection Notes"
+- Creators can hide individual notes or clear all notes at once
+- Hidden notes remain hidden until the page is refreshed or all notes are cleared
+
 ### Admin Interaction
 - Create admin dashboard features to manage expired or rejected requests
 - Implement communication channels for users to follow up on complex request scenarios
@@ -73,6 +84,7 @@
 - `DELETE /requests/{id}`
 - `POST /requests/{id}/reject` (with optional reason parameter)
 - `DELETE /requests/{id}/rejections` (clears rejection notes)
+- `DELETE /requests/{id}/rejections/{rejectionId}` (clears specific rejection note)
 
 ### Project Management
 - `POST /projects/create`
@@ -81,5 +93,36 @@
 - `DELETE /projects/{id}`
 - `POST /projects/{id}/reject` (with optional reason parameter)
 - `DELETE /projects/{id}/rejections` (clears rejection notes)
+- `DELETE /projects/{id}/rejections/{rejectionId}` (clears specific rejection note)
 
+### Participant Management
+- `POST /requests/{id}/participants` (adds a participant)
+- `DELETE /requests/{id}/participants/{username}` (removes a participant)
+- `POST /requests/{id}/participants/{username}/complete` (marks participant as complete)
 
+### Rejection Notes Management
+- `GET /users/{username}/rejections` (gets all rejection notes for a user)
+- `DELETE /users/{username}/rejections` (clears all rejection notes)
+- `DELETE /users/{username}/rejections/{rejectionId}` (clears specific rejection note)
+
+## Local Database Access
+
+### SQLite Database Location
+The SQLite database file is located at `./data/jd-requests.db` in the project root directory.
+
+### How to View the Database
+1. Download and install a SQLite browser like "DB Browser for SQLite" (https://sqlitebrowser.org/)
+2. Open the application and select "Open Database"
+3. Navigate to your project directory and select the `./data/jd-requests.db` file
+4. You can now browse tables, run queries, and examine the data structure
+
+### Alternative Using SQLite CLI
+1. Install SQLite command-line tool if not already installed
+2. Open a terminal in your project directory
+3. Run `sqlite3 ./data/jd-requests.db`
+4. Use SQLite commands like `.tables` to see available tables, and SQL queries to examine data
+
+### Data Storage Notes
+- In the development environment, data is temporarily stored in browser localStorage under the key "jd-requests"
+- This allows for easier testing and development without database setup
+- In production, all data will be properly stored in the SQLite database described above
