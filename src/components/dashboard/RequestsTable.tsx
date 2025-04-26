@@ -269,11 +269,11 @@ const RequestsTable = ({
                               onClick={() => handleAcceptProject(request)}
                             >
                               <Check size={14} className="mr-1" />
-                              {request.type === "project" ? "Accept Project" : "Accept Request"}
+                              Accept {request.type === "project" ? "Project" : "Request"}
                             </Button>
                           ) : (
                             <div className="text-xs text-jd-mutedText mt-1 p-2 bg-jd-bg rounded-md">
-                              {Array.isArray(request.acceptedBy) && request.acceptedBy.includes(userRole || "") ? (
+                              {Array.isArray(request.acceptedBy) && request.acceptedBy?.includes(userRole || "") ? (
                                 "You've already accepted this request"
                               ) : (
                                 "Not for your department"
@@ -282,7 +282,6 @@ const RequestsTable = ({
                           )}
                         </div>
                       )}
-                      
                     </div>
                   </td>
                 </tr>

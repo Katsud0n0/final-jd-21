@@ -294,7 +294,7 @@ export const useRequests = () => {
   };
 
   const canAcceptRequest = (request: Request) => {
-    if (!user || !request) return false;
+    if (!user || !request || user.role !== "client") return false;
 
     // For client users, allow accepting requests that are pending and not archived
     // Users shouldn't be able to accept their own requests

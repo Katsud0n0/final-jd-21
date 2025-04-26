@@ -69,7 +69,7 @@ const Requests = () => {
         handleRequestSuccess={handleRequestSuccess}
       />
 
-      <Tabs defaultValue="all" onValueChange={value => setActiveTab(value)}>
+      <Tabs defaultValue="all" value={activeTab} onValueChange={value => setActiveTab(value)}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="requests">Requests</TabsTrigger>
@@ -99,10 +99,10 @@ const Requests = () => {
         handleAcceptProject={handleAcceptProject}
         confirmDelete={confirmDelete}
         renderDepartmentTags={renderDepartmentTags}
-        userRole={user?.username}
+        userRole={user?.role}
       />
       
-      {/* Clear all requests button - moved to bottom right */}
+      {/* Clear all requests button - at the bottom right */}
       {user?.role === "admin" && clearAllRequests && (
         <div className="flex justify-end mt-6">
           <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
