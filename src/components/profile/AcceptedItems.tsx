@@ -145,8 +145,10 @@ const AcceptedItems = ({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="border-jd-red text-jd-red hover:bg-jd-red/10"
+                    className={`border-jd-red text-jd-red hover:bg-jd-red/10 
+                      ${hasMarkedCompleted(item) ? 'opacity-50 cursor-not-allowed' : ''}`}
                     onClick={() => initiateAbandon(item.id)}
+                    disabled={hasMarkedCompleted(item)}
                   >
                     Reject
                   </Button>

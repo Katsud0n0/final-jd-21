@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -205,11 +206,16 @@ export const useRequests = () => {
           statusChangedBy: user.username
         };
         
-        if (newStatus === "In Process" && (r.type === "request" || r.multiDepartment)) {
+        if (newStatus === "In Process" && (!r.multiDepartment && r.type !== "project")) {
+          // For single department requests, just set one acceptedBy
+          updatedRequest.acceptedBy = [user.username];
+          updatedRequest.usersAccepted = 1;
+        } else if (newStatus === "In Process" && (r.type === "request" || r.multiDepartment)) {
           const currentAcceptedBy = Array.isArray(r.acceptedBy) ? r.acceptedBy : [];
           
           if (!currentAcceptedBy.includes(user.username)) {
             updatedRequest.acceptedBy = [...currentAcceptedBy, user.username];
+            updatedRequest.usersAccepted = (r.usersAccepted || 0) + 1;
           }
         }
         
@@ -284,14 +290,12 @@ export const useRequests = () => {
       const updatedRequests = requests.map(r => {
         if (r.id === id) {
           // Always set status to Pending when any user abandons for multi-dept or project
-          const newStatus = "Pending";
-          
           return {
             ...r,
             acceptedBy: currentAcceptedBy,
-            usersAccepted: (r.usersAccepted || 0) - 1,
+            usersAccepted: Math.max((r.usersAccepted || 0) - 1, 0),
             participantsCompleted: participantsCompleted,
-            status: newStatus,
+            status: "Pending",
             lastStatusUpdate: now.toISOString(),
             lastStatusUpdateTime: now.toLocaleTimeString()
           };
@@ -349,6 +353,19 @@ export const useRequests = () => {
   };
 
   const handleAcceptProject = (request: Request) => {
+    // For single department requests, don't allow accepting if already accepted by someone
+    if (!request.multiDepartment && request.type !== "project") {
+      const currentAcceptedBy = Array.isArray(request.acceptedBy) ? request.acceptedBy : [];
+      if (currentAcceptedBy.length > 0) {
+        toast({
+          title: "Request already accepted",
+          description: "This request has already been accepted by another user.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+    
     setSelectedRequest(request);
     setProjectToAccept(request.id);
     setAcceptDialogOpen(true);
@@ -387,7 +404,6 @@ export const useRequests = () => {
     // Update status to "In Process" if:
     // 1. It's a multi-department request and has enough users
     // 2. It's not a multi-department request (single department case)
-    // Note: We're allowing In Process even if status was previously Rejected
     const shouldUpdateStatus = 
       (
         (project.multiDepartment && updatedUsersAccepted >= (project.usersNeeded || 1)) ||
@@ -462,12 +478,20 @@ export const useRequests = () => {
     if (request.status === "Rejected" && !request.multiDepartment && request.type !== "project") {
       return false;
     }
+    
+    // For single department requests, don't allow accepting if already accepted by someone
+    if (!request.multiDepartment && request.type !== "project" && acceptedBy.length > 0) {
+      return false;
+    }
 
     return notArchived && isForUserDepartment && notAlreadyAccepted;
   };
 
   const canAbandonRequest = (request: Request) => {
     if (!user || !request || user.role !== "client") return false;
+
+    // Can't abandon completed requests
+    if (request.status === "Completed") return false;
 
     if (request.type === "project" && !request.multiDepartment) return false;
 
@@ -627,23 +651,20 @@ export const useRequests = () => {
       }
     }
     
-    // For single requests, only show current user if they accepted
-    if (user && (
-      (Array.isArray(request.acceptedBy) && request.acceptedBy.includes(user.username)) || 
-      request.acceptedBy === user.username
-    )) {
-      return (
-        <div className="space-y-1 mt-1">
-          <div className="flex items-center gap-1">
-            <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
-              {user.username}
-            </span>
-            {request.participantsCompleted?.includes(user.username) && (
-              <Check size={12} className="text-green-500" />
-            )}
+    // For single requests, only show the first user who accepted
+    if (!request.multiDepartment && request.type !== "project") {
+      const acceptedUser = Array.isArray(request.acceptedBy) ? request.acceptedBy[0] : request.acceptedBy;
+      if (acceptedUser) {
+        return (
+          <div className="space-y-1 mt-1">
+            <div className="flex items-center gap-1">
+              <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
+                {acceptedUser}
+              </span>
+            </div>
           </div>
-        </div>
-      );
+        );
+      }
     }
     
     return "None";
