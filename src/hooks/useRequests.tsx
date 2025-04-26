@@ -200,6 +200,54 @@ export const useRequests = () => {
     });
   };
 
+  const handleAbandon = (id: string) => {
+    if (!user) return;
+    
+    const request = requests.find(r => r.id === id);
+    
+    if (!request) {
+      toast({
+        title: "Request not found",
+        description: "The request you're trying to abandon could not be found.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const currentAcceptedBy = Array.isArray(request.acceptedBy) ? [...request.acceptedBy] : [];
+    const userIndex = currentAcceptedBy.indexOf(user.username);
+    
+    if (userIndex === -1) {
+      toast({
+        title: "Not participating",
+        description: "You are not participating in this request.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    currentAcceptedBy.splice(userIndex, 1);
+    
+    const updatedRequests = requests.map(r => {
+      if (r.id === id) {
+        return {
+          ...r,
+          acceptedBy: currentAcceptedBy,
+          usersAccepted: (r.usersAccepted || 0) - 1
+        };
+      }
+      return r;
+    });
+    
+    setRequests(updatedRequests);
+    localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+    
+    toast({
+      title: "Request abandoned",
+      description: "You have successfully abandoned the request.",
+    });
+  };
+
   const confirmDelete = () => {
     if (requestToDelete) {
       const updatedRequests = requests.filter(r => r.id !== requestToDelete);
@@ -242,7 +290,7 @@ export const useRequests = () => {
     if (currentAcceptedBy.includes(user.username)) {
       toast({
         title: "Already accepted",
-        description: "You have already accepted this project.",
+        description: "You have already accepted this request.",
       });
       setAcceptDialogOpen(false);
       return;
@@ -319,13 +367,29 @@ export const useRequests = () => {
     return !acceptedBy.includes(user.username);
   };
 
+  const canAbandonRequest = (request: Request) => {
+    if (!user || !request || user.role !== "client") return false;
+
+    // Users can abandon multi-department requests/projects they've accepted
+    if (!request.multiDepartment && request.type !== "project") return false;
+
+    // Can't abandon if status not pending or in process
+    if (request.status !== "Pending" && request.status !== "In Process") return false;
+
+    // Check if user has accepted this request/project
+    const acceptedBy = Array.isArray(request.acceptedBy) ? request.acceptedBy : [];
+    
+    // User can abandon if they've accepted this request/project
+    return acceptedBy.includes(user.username);
+  };
+
   const canDeleteRequest = (request: Request) => {
     if (request.status === "Completed" || request.status === "Rejected") {
       return false;
     }
     
     if (user?.role === "admin") {
-      return user.department === request.department;
+      return isUserDepartmentIncluded(request);
     }
     
     return user?.username === request.creator;
@@ -336,13 +400,13 @@ export const useRequests = () => {
       return false;
     }
     
-    return user?.role === "admin" && user?.department === request.department;
+    return user?.role === "admin" && isUserDepartmentIncluded(request);
   };
 
   const canArchiveProject = (request: Request) => {
-    return request.type === "project" && 
+    return (request.type === "project" || request.multiDepartment) && 
            user?.role === "admin" && 
-           user?.department === request.department;
+           isUserDepartmentIncluded(request);
   };
 
   const openDetailsDialog = (request: Request) => {
@@ -399,11 +463,11 @@ export const useRequests = () => {
   };
 
   const renderAcceptedByDetails = (request: Request) => {
-    if (!request.acceptedBy) return "None";
+    if (!request.acceptedBy || (Array.isArray(request.acceptedBy) && request.acceptedBy.length === 0)) {
+      return "None";
+    }
     
-    if (Array.isArray(request.acceptedBy)) {
-      if (request.acceptedBy.length === 0) return "None";
-      
+    if (Array.isArray(request.acceptedBy)) {      
       return (
         <div className="space-y-1 mt-1">
           {request.acceptedBy.map((username, idx) => (
@@ -479,6 +543,7 @@ export const useRequests = () => {
     handleStatusChange,
     handleDelete,
     handleArchive,
+    handleAbandon,
     handleAcceptProject,
     confirmDelete,
     confirmAcceptProject,
@@ -487,6 +552,7 @@ export const useRequests = () => {
     canDeleteRequest,
     canArchiveProject,
     canAcceptRequest,
+    canAbandonRequest,
     renderDepartmentTags,
     renderAcceptedByDetails,
   };

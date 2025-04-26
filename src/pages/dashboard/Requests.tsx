@@ -48,6 +48,7 @@ const Requests = () => {
     handleStatusChange,
     handleDelete,
     handleArchive,
+    handleAbandon,
     handleAcceptProject,
     confirmDelete,
     confirmAcceptProject,
@@ -56,6 +57,7 @@ const Requests = () => {
     canDeleteRequest,
     canArchiveProject,
     canAcceptRequest,
+    canAbandonRequest,
     renderDepartmentTags,
     renderAcceptedByDetails,
   } = useRequests();
@@ -93,13 +95,16 @@ const Requests = () => {
         canDeleteRequest={canDeleteRequest}
         canArchiveProject={canArchiveProject}
         canAcceptRequest={canAcceptRequest}
+        canAbandonRequest={canAbandonRequest}
         handleStatusChange={handleStatusChange}
         handleDelete={handleDelete}
         handleArchive={handleArchive}
+        handleAbandon={handleAbandon}
         handleAcceptProject={handleAcceptProject}
         confirmDelete={confirmDelete}
         renderDepartmentTags={renderDepartmentTags}
         userRole={user?.role}
+        username={user?.username}
       />
       
       {/* Clear all requests button - at the bottom right */}
@@ -197,7 +202,7 @@ const Requests = () => {
                 </p>
               </div>
               
-              {selectedRequest.type === "project" && (
+              {(selectedRequest.type === "project" || selectedRequest.multiDepartment) && (
                 <div>
                   <h4 className="text-sm font-medium mb-2">Participants:</h4>
                   {renderAcceptedByDetails(selectedRequest)}

@@ -29,6 +29,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
   const [existingProjects, setExistingProjects] = useState<any[]>([]);
   const [formError, setFormError] = useState("");
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
+  const [multiDepartmentRequest, setMultiDepartmentRequest] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -58,6 +59,13 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
     setFormError(""); // Clear any error when department is selected
   };
 
+  const handleMultiDepartmentToggle = (checked: boolean) => {
+    setMultiDepartmentRequest(checked);
+    if (!checked) {
+      setSelectedDepartments([]);
+    }
+  };
+
   const handleTypeChange = (value: string) => {
     setFormData((prev) => ({ 
       ...prev, 
@@ -70,17 +78,19 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
     // Clear selected departments when switching types
     if (value === "request") {
       setSelectedDepartments([]);
+      setMultiDepartmentRequest(false);
     }
   };
 
   const handleDepartmentCheckboxChange = (deptName: string, checked: boolean) => {
     if (checked) {
-      if (selectedDepartments.length < 5) {
+      const maxDepts = formData.type === "project" ? 5 : 2;
+      if (selectedDepartments.length < maxDepts) {
         setSelectedDepartments([...selectedDepartments, deptName]);
       } else {
         toast({
-          title: "Maximum departments reached",
-          description: "You can select a maximum of 5 departments for a project.",
+          title: `Maximum departments reached`,
+          description: `You can select a maximum of ${maxDepts} departments for a ${formData.type}.`,
           variant: "destructive",
         });
       }
@@ -105,8 +115,14 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
     e.preventDefault();
     
     // Validate department selection
-    if (formData.type === "request" && !formData.department) {
+    if (formData.type === "request" && !multiDepartmentRequest && !formData.department) {
       setFormError("Please select a department");
+      return;
+    }
+    
+    // For multi-department requests, validate that at least 1 department is selected
+    if (formData.type === "request" && multiDepartmentRequest && selectedDepartments.length === 0) {
+      setFormError("Please select at least 1 department for your request");
       return;
     }
     
@@ -128,12 +144,15 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
       
       const now = new Date();
       
-      // For projects, automatically include creator in accepted users
+      // For projects and multi-department requests, automatically include creator in accepted users
+      const isMultiDept = formData.type === "project" || (formData.type === "request" && multiDepartmentRequest);
+      const departments = multiDepartmentRequest ? selectedDepartments : [formData.department];
+      
       const newItem = {
         id: `#${Math.floor(100000 + Math.random() * 900000)}`,
         title: formData.title,
-        department: formData.type === "project" ? selectedDepartments[0] : formData.department,
-        departments: formData.type === "project" ? selectedDepartments : [formData.department],
+        department: isMultiDept ? departments[0] : formData.department,
+        departments: isMultiDept ? departments : [formData.department],
         status: "Pending",
         dateCreated: now.toLocaleDateString("en-GB"),
         creator: user?.username || "user",
@@ -143,13 +162,17 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         createdAt: now.toISOString(),
         creatorRole: user?.role || "client",
         isExpired: false,
-        acceptedBy: formData.type === "project" ? [user?.username || "user"] : [], // Auto-add creator
-        usersAccepted: formData.type === "project" ? 1 : 0, // Start count at 1 for creator
+        acceptedBy: isMultiDept ? [user?.username || "user"] : [], // Auto-add creator for multi-dept
+        usersAccepted: isMultiDept ? 1 : 0, // Start count at 1 for creator if multi-dept
         completedBy: [], // Track who marked as complete
+        multiDepartment: multiDepartmentRequest,
         ...(formData.type === "project" && {
           priority: formData.priority,
           archived: false,
           usersNeeded: parseInt(formData.usersNeeded) + 1, // Add 1 to include creator
+        }),
+        ...(formData.type === "request" && multiDepartmentRequest && {
+          usersNeeded: departments.length, // For multi-department requests
         }),
         ...(formData.type === "request" && formData.relatedProject && {
           relatedProject: formData.relatedProject !== "none" ? formData.relatedProject : null,
@@ -173,6 +196,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         usersNeeded: "2", // Reset to default 2 users
       });
       setSelectedDepartments([]);
+      setMultiDepartmentRequest(false);
 
       // Call the success callback
       if (onSuccess) {
@@ -221,27 +245,90 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         {formData.type === "request" && (
           <>
             <div className="space-y-2">
-              <Label htmlFor="department" className="flex items-center">
-                Required Department <span className="text-red-500 ml-1">*</span>
-              </Label>
-              <Select
-                value={formData.department}
-                onValueChange={handleDepartmentChange}
-                required
-              >
-                <SelectTrigger className={formError ? "border-red-500" : ""}>
-                  <SelectValue placeholder="Select department" />
-                </SelectTrigger>
-                <SelectContent>
-                  {departments.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.name}>
-                      {dept.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {formError && <p className="text-xs text-red-500">{formError}</p>}
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="multi-department" 
+                  checked={multiDepartmentRequest}
+                  onCheckedChange={handleMultiDepartmentToggle}
+                />
+                <label
+                  htmlFor="multi-department"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Request requires multiple departments (1-2)
+                </label>
+              </div>
             </div>
+
+            {!multiDepartmentRequest ? (
+              <div className="space-y-2">
+                <Label htmlFor="department" className="flex items-center">
+                  Required Department <span className="text-red-500 ml-1">*</span>
+                </Label>
+                <Select
+                  value={formData.department}
+                  onValueChange={handleDepartmentChange}
+                  required={!multiDepartmentRequest}
+                >
+                  <SelectTrigger className={formError ? "border-red-500" : ""}>
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.name}>
+                        {dept.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formError && <p className="text-xs text-red-500">{formError}</p>}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label className="flex items-center">
+                  Required Departments <span className="text-red-500 ml-1">*</span>
+                  <span className="text-xs text-jd-mutedText ml-2">
+                    (Select 1-2 departments)
+                  </span>
+                </Label>
+                <div className="grid grid-cols-2 gap-2 mt-2 p-2 max-h-48 overflow-y-auto border rounded-md">
+                  {departments.map((dept) => (
+                    <div key={dept.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`dept-${dept.id}`}
+                        checked={selectedDepartments.includes(dept.name)}
+                        onCheckedChange={(checked) => 
+                          handleDepartmentCheckboxChange(dept.name, checked as boolean)
+                        }
+                      />
+                      <label
+                        htmlFor={`dept-${dept.id}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {dept.name}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                {formError && <p className="text-xs text-red-500">{formError}</p>}
+                {selectedDepartments.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {selectedDepartments.map((dept) => (
+                      <div key={dept} className="bg-jd-purple/20 text-jd-purple text-xs px-2 py-1 rounded-full flex items-center">
+                        {dept}
+                        <button
+                          type="button"
+                          className="ml-1"
+                          onClick={() => handleDepartmentCheckboxChange(dept, false)}
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="relatedProject">Related Project (Optional)</Label>
@@ -363,7 +450,6 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
                   <SelectValue placeholder="Select number of users needed" />
                 </SelectTrigger>
                 <SelectContent>
-                  {/* Starting from 2 users now as minimum */}
                   <SelectItem value="2">2 users</SelectItem>
                   <SelectItem value="3">3 users</SelectItem>
                   <SelectItem value="4">4 users</SelectItem>

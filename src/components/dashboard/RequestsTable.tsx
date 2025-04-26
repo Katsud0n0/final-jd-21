@@ -34,13 +34,16 @@ interface RequestsTableProps {
   canDeleteRequest: (request: Request) => boolean;
   canArchiveProject: (request: Request) => boolean;
   canAcceptRequest: (request: Request) => boolean;
+  canAbandonRequest?: (request: Request) => boolean;
   handleStatusChange: (id: string, status: string) => void;
   handleDelete: (id: string) => void;
   handleArchive: (id: string) => void;
+  handleAbandon?: (id: string) => void;
   handleAcceptProject: (request: Request) => void;
   confirmDelete: () => void;
   renderDepartmentTags: (request: Request) => JSX.Element;
   userRole?: string;
+  username?: string;
 }
 
 const statusOptions = ["Pending", "In Process", "Completed", "Rejected"];
@@ -51,13 +54,16 @@ const RequestsTable = ({
   canDeleteRequest,
   canArchiveProject,
   canAcceptRequest,
+  canAbandonRequest,
   handleStatusChange,
   handleDelete,
   handleArchive,
+  handleAbandon,
   handleAcceptProject,
   confirmDelete,
   renderDepartmentTags,
   userRole,
+  username,
 }: RequestsTableProps) => {
   return (
     <div className="bg-jd-card rounded-lg overflow-hidden">
@@ -117,12 +123,33 @@ const RequestsTable = ({
                               <h4 className="text-sm font-medium mb-1">Description:</h4>
                               <p className="text-jd-mutedText text-sm">{request.description}</p>
                             </div>
+                            {(request.type === "project" || request.multiDepartment) && (
+                              <div>
+                                <h4 className="text-sm font-medium mb-1">Accepted By:</h4>
+                                {Array.isArray(request.acceptedBy) && request.acceptedBy.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {request.acceptedBy.map((user, idx) => (
+                                      <span key={idx} className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
+                                        {user}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-jd-mutedText text-sm">None yet</p>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </DialogContent>
                       </Dialog>
                       {request.type === "project" && (
                         <span className="ml-2 px-2 py-0.5 text-xs bg-jd-purple/20 text-jd-purple rounded-full">
                           Project
+                        </span>
+                      )}
+                      {request.multiDepartment && request.type === "request" && (
+                        <span className="ml-2 px-2 py-0.5 text-xs bg-blue-500/20 text-blue-500 rounded-full">
+                          Multi-Dept
                         </span>
                       )}
                     </div>
@@ -166,7 +193,7 @@ const RequestsTable = ({
                         }`}>
                           {request.status}
                         </span>
-                        {request.type === "project" && request.usersNeeded && (
+                        {(request.type === "project" || request.multiDepartment) && request.usersNeeded && (
                           <span className="text-xs text-jd-mutedText mt-1">
                             {request.usersAccepted && request.usersAccepted > 0 
                               ? `Accepted by ${request.usersAccepted}/${request.usersNeeded} users`
@@ -273,14 +300,29 @@ const RequestsTable = ({
                             </Button>
                           ) : (
                             <div className="text-xs text-jd-mutedText mt-1 p-2 bg-jd-bg rounded-md">
-                              {Array.isArray(request.acceptedBy) && request.acceptedBy?.includes(userRole || "") ? (
-                                "Accepted"
+                              {Array.isArray(request.acceptedBy) && 
+                              username && 
+                              request.acceptedBy.includes(username) ? (
+                                <span className="text-jd-green font-medium">Accepted</span>
                               ) : (
                                 "Not for your department"
                               )}
                             </div>
                           )}
                         </div>
+                      )}
+                      
+                      {canAbandonRequest && handleAbandon && 
+                      canAbandonRequest(request) && 
+                      (request.status === "Pending" || request.status === "In Process") && (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="w-full mt-1 bg-jd-orange/10 text-jd-orange hover:bg-jd-orange/20 border-jd-orange/20"
+                          onClick={() => handleAbandon(request.id)}
+                        >
+                          Abandon {request.type === "project" ? "Project" : "Request"}
+                        </Button>
                       )}
                     </div>
                   </td>

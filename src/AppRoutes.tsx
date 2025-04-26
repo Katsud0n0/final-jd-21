@@ -31,7 +31,7 @@ const AppRoutes = () => {
       
       {/* Dashboard Routes */}
       <Route element={<DashboardLayout />}>
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard" element={<Navigate to="/home" replace />} />
         <Route path="/departments" element={<Departments />} />
         <Route path="/requests" element={<Requests />} />
         <Route path="/profile" element={<Profile />} />
@@ -39,7 +39,7 @@ const AppRoutes = () => {
         <Route path="/settings" element={<Settings />} />
         <Route path="/home" element={<Home />} />
         
-        {/* Redirect /dashboard to /home as default */}
+        {/* Redirect dashboard root path to /home as default */}
         <Route path="/" element={<Navigate to="/home" replace />} />
       </Route>
       
