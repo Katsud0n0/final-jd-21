@@ -168,7 +168,9 @@ const RequestsTable = ({
                         </span>
                         {request.type === "project" && request.usersNeeded && (
                           <span className="text-xs text-jd-mutedText mt-1">
-                            Accepted by {request.usersAccepted || 0}/{request.usersNeeded} users
+                            {request.usersAccepted && request.usersAccepted > 0 
+                              ? `Accepted by ${request.usersAccepted}/${request.usersNeeded} users`
+                              : "No users have accepted yet"}
                           </span>
                         )}
                         {request.lastStatusUpdateTime && (
@@ -257,19 +259,30 @@ const RequestsTable = ({
                         )}
                       </div>
                       
-                      {/* Always render the accept button, but disable it when needed */}
                       {userRole === "client" && request.status === "Pending" && (
-                        <Button 
-                          size="sm"
-                          variant="outline"
-                          className="w-full mt-1 bg-jd-green/10 text-jd-green hover:bg-jd-green/20 border-jd-green/20"
-                          onClick={() => handleAcceptProject(request)}
-                          disabled={!canAcceptRequest(request)}
-                        >
-                          <Check size={14} className="mr-1" />
-                          {request.type === "project" ? "Accept Project" : "Accept Request"}
-                        </Button>
+                        <div>
+                          {canAcceptRequest(request) ? (
+                            <Button 
+                              size="sm"
+                              variant="outline"
+                              className="w-full mt-1 bg-jd-green/10 text-jd-green hover:bg-jd-green/20 border-jd-green/20"
+                              onClick={() => handleAcceptProject(request)}
+                            >
+                              <Check size={14} className="mr-1" />
+                              {request.type === "project" ? "Accept Project" : "Accept Request"}
+                            </Button>
+                          ) : (
+                            <div className="text-xs text-jd-mutedText mt-1 p-2 bg-jd-bg rounded-md">
+                              {Array.isArray(request.acceptedBy) && request.acceptedBy.includes(userRole || "") ? (
+                                "You've already accepted this request"
+                              ) : (
+                                "Not for your department"
+                              )}
+                            </div>
+                          )}
+                        </div>
                       )}
+                      
                     </div>
                   </td>
                 </tr>

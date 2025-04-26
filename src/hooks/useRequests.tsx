@@ -298,16 +298,15 @@ export const useRequests = () => {
 
     // For client users, allow accepting requests that are pending and not archived
     // Users shouldn't be able to accept their own requests
-    const isClient = user.role === "client";
     const isPending = request.status === "Pending";
     const notArchived = !request.archived;
     const isNotCreator = request.creator !== user.username;
     
-    // Make sure the request is for the user's department
+    // Check if the request is for the user's department
     const isForUserDepartment = isUserDepartmentIncluded(request);
     
     // Basic conditions that apply to both projects and requests
-    const basicConditions = isClient && isPending && notArchived && isNotCreator && isForUserDepartment;
+    const basicConditions = isPending && notArchived && isNotCreator && isForUserDepartment;
     
     if (!basicConditions) return false;
     

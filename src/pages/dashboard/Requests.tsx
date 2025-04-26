@@ -15,11 +15,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
 import RequestsHeader from "@/components/dashboard/RequestsHeader";
 import RequestsFilters from "@/components/dashboard/RequestsFilters";
 import RequestsTable from "@/components/dashboard/RequestsTable";
 import { useRequests } from "@/hooks/useRequests";
 import { useAuth } from "@/contexts/AuthContext";
+import { useState } from "react";
 
 const Requests = () => {
   const { user } = useAuth();
@@ -56,6 +59,7 @@ const Requests = () => {
     renderDepartmentTags,
     renderAcceptedByDetails,
   } = useRequests();
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -63,7 +67,6 @@ const Requests = () => {
         dialogOpen={dialogOpen}
         setDialogOpen={setDialogOpen}
         handleRequestSuccess={handleRequestSuccess}
-        clearAllRequests={clearAllRequests}
       />
 
       <Tabs defaultValue="all" onValueChange={value => setActiveTab(value)}>
@@ -96,8 +99,44 @@ const Requests = () => {
         handleAcceptProject={handleAcceptProject}
         confirmDelete={confirmDelete}
         renderDepartmentTags={renderDepartmentTags}
-        userRole={user?.role}
+        userRole={user?.username}
       />
+      
+      {/* Clear all requests button - moved to bottom right */}
+      {user?.role === "admin" && clearAllRequests && (
+        <div className="flex justify-end mt-6">
+          <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
+            <Button 
+              variant="outline" 
+              className="border-jd-red text-jd-red hover:bg-jd-red/10"
+              onClick={() => setClearDialogOpen(true)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Clear {user.department} Requests
+            </Button>
+            <AlertDialogContent className="bg-jd-card border-jd-card">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear Department Requests</AlertDialogTitle>
+                <p className="text-jd-mutedText">
+                  Are you sure you want to clear all requests for {user.department}? This action cannot be undone.
+                </p>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="bg-jd-bg hover:bg-jd-bg/80">Cancel</AlertDialogCancel>
+                <AlertDialogAction 
+                  className="bg-red-600 hover:bg-red-700"
+                  onClick={() => {
+                    clearAllRequests();
+                    setClearDialogOpen(false);
+                  }}
+                >
+                  Clear All
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      )}
 
       <AlertDialog open={acceptDialogOpen} onOpenChange={setAcceptDialogOpen}>
         <AlertDialogContent className="bg-jd-card border-jd-card">

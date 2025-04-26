@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
@@ -45,16 +44,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Load all registered users
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    // Check if user is logged in
     const storedUser = localStorage.getItem("jd-user");
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
       
-      // Check if user is banned or blocked
       if (parsedUser.status === "banned") {
         toast({
           title: "Account banned",
@@ -67,7 +63,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     
-    // Load all users
     const storedUsers = localStorage.getItem("jd-users");
     if (storedUsers) {
       setAllUsers(JSON.parse(storedUsers));
@@ -82,20 +77,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const updateUserStatus = (username: string, status: "active" | "blocked" | "banned") => {
-    // Update in all users
     const updatedUsers = allUsers.map(u => 
       u.username === username ? { ...u, status } : u
     );
     
     saveAllUsers(updatedUsers);
     
-    // If this is the current user, update their status too
     if (user?.username === username) {
       const updatedUser = { ...user, status };
       localStorage.setItem("jd-user", JSON.stringify(updatedUser));
       setUser(updatedUser);
       
-      // If banned, log them out
       if (status === "banned") {
         logout();
         toast({
@@ -118,13 +110,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  // Add the updateUser function
   const updateUser = (updatedUser: User) => {
-    // Update the current user
     localStorage.setItem("jd-user", JSON.stringify(updatedUser));
     setUser(updatedUser);
     
-    // Update in all users too
     const updatedUsers = allUsers.map(u => 
       u.id === updatedUser.id ? updatedUser : u
     );
@@ -135,20 +124,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (username: string, password: string) => {
     try {
       setIsLoading(true);
-      // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
       
-      // Check if user exists in the stored users
       const storedUsers = JSON.parse(localStorage.getItem("jd-users") || "[]");
       const existingUser = storedUsers.find((u: User) => u.username.toLowerCase() === username.toLowerCase());
       
       if (existingUser) {
-        // Check if user is banned
         if (existingUser.status === "banned") {
           throw new Error("Your account has been banned. Please contact support.");
         }
         
-        // Use the existing user data
         localStorage.setItem("jd-user", JSON.stringify(existingUser));
         setUser(existingUser);
         
@@ -161,7 +146,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       
-      // Check for predefined admin accounts
       const email = username.includes('@') ? username : `${username.toLowerCase()}@jdframeworks.com`;
       const isAdmin = email.endsWith('@water.com') || 
                      email.endsWith('@electricity.com') || 
@@ -174,7 +158,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                      email.endsWith('@environment.com') || 
                      email.endsWith('@finance.com');
       
-      // Determine department from email
       let department = "General";
       if (email.includes('@water.')) department = "Water Supply";
       else if (email.includes('@electricity.')) department = "Electricity";
@@ -187,7 +170,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       else if (email.includes('@environment.')) department = "Environment";
       else if (email.includes('@finance.')) department = "Finance";
       
-      // Mock user data (in a real app, this would come from your API or SQLite database)
       const userData: User = {
         id: "user-" + Date.now(),
         username: username.toLowerCase(),
@@ -199,11 +181,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         status: "active"
       };
       
-      // Add to all users
       const newAllUsers = [...allUsers, userData];
       saveAllUsers(newAllUsers);
       
-      // Save to localStorage
       localStorage.setItem("jd-user", JSON.stringify(userData));
       setUser(userData);
       
@@ -224,10 +204,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (username: string, fullName: string, department: string, password: string) => {
+  const register = async (
+    username: string,
+    fullName: string,
+    department: string,
+    password: string
+  ) => {
     try {
       setIsLoading(true);
-      // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
       
       const email = username.includes('@') ? username : `${username.toLowerCase()}@jdframeworks.com`;
@@ -242,7 +226,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                      email.endsWith('@environment.com') || 
                      email.endsWith('@finance.com');
       
-      // In a real app, this would store data in SQLite
       const userData: User = {
         id: `user-${Date.now()}`,
         username: username.toLowerCase(),
@@ -253,7 +236,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         status: "active"
       };
       
-      // Add to all users
       const newAllUsers = [...allUsers, userData];
       saveAllUsers(newAllUsers);
       
