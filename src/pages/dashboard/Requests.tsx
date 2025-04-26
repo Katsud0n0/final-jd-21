@@ -141,9 +141,9 @@ const Requests = () => {
       <AlertDialog open={acceptDialogOpen} onOpenChange={setAcceptDialogOpen}>
         <AlertDialogContent className="bg-jd-card border-jd-card">
           <AlertDialogHeader>
-            <AlertDialogTitle>Accept Project</AlertDialogTitle>
+            <AlertDialogTitle>Accept {selectedRequest?.type === "project" ? "Project" : "Request"}</AlertDialogTitle>
             <p className="text-jd-mutedText">
-              Are you sure you want to accept this project? You will be added as a participant.
+              Are you sure you want to accept this {selectedRequest?.type === "project" ? "project" : "request"}? You will be added as a participant.
             </p>
           </AlertDialogHeader>
           <AlertDialogFooter>

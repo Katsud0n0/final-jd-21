@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Eye, EyeOff } from "lucide-react";
 
 const Login = () => {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -27,6 +28,7 @@ const Login = () => {
 
     try {
       await login(formData.username, formData.password);
+      navigate("/home"); // Redirect to home after successful login
     } catch (error) {
       console.error("Login error:", error);
     } finally {

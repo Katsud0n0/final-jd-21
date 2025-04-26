@@ -1,5 +1,5 @@
 
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 
 // App layout
 import DashboardLayout from "./layouts/DashboardLayout";
@@ -38,6 +38,9 @@ const AppRoutes = () => {
         <Route path="/team" element={<Team />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/home" element={<Home />} />
+        
+        {/* Redirect /dashboard to /home as default */}
+        <Route path="/" element={<Navigate to="/home" replace />} />
       </Route>
       
       {/* 404 Route */}

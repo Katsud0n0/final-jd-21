@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -215,6 +216,7 @@ export const useRequests = () => {
   };
 
   const handleAcceptProject = (request: Request) => {
+    setSelectedRequest(request);
     setProjectToAccept(request.id);
     setAcceptDialogOpen(true);
   };
@@ -269,10 +271,10 @@ export const useRequests = () => {
     localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
     
     toast({
-      title: "Project accepted",
+      title: project.type === "project" ? "Project accepted" : "Request accepted",
       description: shouldUpdateStatus 
-        ? "You've accepted the project and it has now moved to In Process status."
-        : "You've accepted the project. It needs more users before it can start.",
+        ? `You've accepted the ${project.type}. It has now moved to In Process status.` 
+        : `You've accepted the ${project.type}. It needs more users before it can start.`,
     });
     
     setAcceptDialogOpen(false);
@@ -310,14 +312,11 @@ export const useRequests = () => {
     
     if (!basicConditions) return false;
     
-    if (request.type === "project") {
-      const acceptedBy = Array.isArray(request.acceptedBy) ? request.acceptedBy : [];
-      // Make sure user hasn't already accepted this project
-      return !acceptedBy.includes(user.username);
-    }
+    // Check if user has already accepted this request or project
+    const acceptedBy = Array.isArray(request.acceptedBy) ? request.acceptedBy : [];
     
-    // For regular requests
-    return true;
+    // Make sure user hasn't already accepted this request/project
+    return !acceptedBy.includes(user.username);
   };
 
   const canDeleteRequest = (request: Request) => {
@@ -405,29 +404,25 @@ export const useRequests = () => {
     if (Array.isArray(request.acceptedBy)) {
       if (request.acceptedBy.length === 0) return "None";
       
-      if (request.type === "project") {
-        return (
-          <div className="space-y-1 mt-1">
-            {request.acceptedBy.map((username, idx) => (
-              <div key={idx} className="flex items-center gap-1">
-                <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
-                  {username}
-                </span>
-                {request.participantsCompleted?.includes(username) && (
-                  <Check size={12} className="text-green-500" />
-                )}
-              </div>
-            ))}
-            {request.usersNeeded && request.acceptedBy.length < request.usersNeeded && (
-              <div className="text-xs text-jd-mutedText mt-1">
-                Waiting for {request.usersNeeded - request.acceptedBy.length} more participants
-              </div>
-            )}
-          </div>
-        );
-      }
-      
-      return request.acceptedBy.join(", ");
+      return (
+        <div className="space-y-1 mt-1">
+          {request.acceptedBy.map((username, idx) => (
+            <div key={idx} className="flex items-center gap-1">
+              <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
+                {username}
+              </span>
+              {request.participantsCompleted?.includes(username) && (
+                <Check size={12} className="text-green-500" />
+              )}
+            </div>
+          ))}
+          {request.usersNeeded && request.acceptedBy.length < request.usersNeeded && (
+            <div className="text-xs text-jd-mutedText mt-1">
+              Waiting for {request.usersNeeded - request.acceptedBy.length} more participants
+            </div>
+          )}
+        </div>
+      );
     }
     
     return typeof request.acceptedBy === 'string' ? request.acceptedBy : 'None';

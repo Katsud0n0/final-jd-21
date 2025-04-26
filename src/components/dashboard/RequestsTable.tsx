@@ -162,7 +162,7 @@ const RequestsTable = ({
                           request.status === "Pending" ? "bg-jd-orange/20 text-jd-orange" : 
                           request.status === "In Process" ? "bg-blue-500/20 text-blue-500" :
                           request.status === "Completed" ? "bg-jd-green/20 text-jd-green" :
-                          "bg-jd-red/20 text-jd-red"
+                          "bg-gray-500/20 text-gray-500"
                         }`}>
                           {request.status}
                         </span>
@@ -274,7 +274,7 @@ const RequestsTable = ({
                           ) : (
                             <div className="text-xs text-jd-mutedText mt-1 p-2 bg-jd-bg rounded-md">
                               {Array.isArray(request.acceptedBy) && request.acceptedBy?.includes(userRole || "") ? (
-                                "You've already accepted this request"
+                                "Accepted"
                               ) : (
                                 "Not for your department"
                               )}

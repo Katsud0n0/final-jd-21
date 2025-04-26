@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { departments } from "@/data/departments";
 
 const Register = () => {
   const { register } = useAuth();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     username: "",
     fullName: "",
@@ -61,6 +62,7 @@ const Register = () => {
         formData.department,
         formData.password
       );
+      navigate("/home"); // Redirect to home after successful registration
     } catch (error) {
       console.error("Registration error:", error);
     } finally {
