@@ -18,7 +18,7 @@ export interface Request {
   acceptedBy?: string[] | string;
   participantsCompleted?: string[];
   usersAccepted?: number;
-  usersNeeded?: number;
+  usersNeeded: number; // Making this required
   lastStatusUpdateTime?: string;
   lastStatusUpdate?: string;
   priority?: 'low' | 'medium' | 'high';

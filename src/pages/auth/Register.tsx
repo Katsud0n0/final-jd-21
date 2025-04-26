@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { departments } from "@/data/departments";
+import { toast } from "react-toastify";
 
 const Register = () => {
   const { register } = useAuth();
@@ -31,7 +31,6 @@ const Register = () => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     
-    // Clear password error when user types
     if (name === "password" || name === "confirmPassword") {
       setPasswordError("");
     }
@@ -52,6 +51,15 @@ const Register = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!formData.department) {
+      toast({
+        title: "Department required",
+        description: "Please select your department before registering.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     if (!validateForm()) return;
     
     setIsLoading(true);
@@ -62,7 +70,7 @@ const Register = () => {
         formData.department,
         formData.password
       );
-      navigate("/home"); // Redirect to home after successful registration
+      navigate("/home");
     } catch (error) {
       console.error("Registration error:", error);
     } finally {

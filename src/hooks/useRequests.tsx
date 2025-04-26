@@ -208,20 +208,6 @@ export const useRequests = () => {
     }
 
     const project = requests[projectIndex];
-    
-    if (!project.multiDepartment && project.type !== "project") {
-      const currentAcceptedBy = Array.isArray(project.acceptedBy) ? project.acceptedBy : [];
-      if (currentAcceptedBy.length > 0) {
-        toast({
-          title: "Request already accepted",
-          description: "This request has already been accepted by another user.",
-          variant: "destructive"
-        });
-        setAcceptDialogOpen(false);
-        return;
-      }
-    }
-    
     const currentAcceptedBy = Array.isArray(project.acceptedBy) ? project.acceptedBy : [];
     
     if (currentAcceptedBy.includes(user.username)) {
@@ -235,12 +221,9 @@ export const useRequests = () => {
     
     const updatedAcceptedBy = [...currentAcceptedBy, user.username];
     const updatedUsersAccepted = (project.usersAccepted || 0) + 1;
+    const usersNeeded = project.usersNeeded || 2;
     
-    const shouldUpdateStatus = 
-      (
-        (project.multiDepartment || project.type === "project") && updatedUsersAccepted >= 2
-      ) ||
-      (!project.multiDepartment && project.type !== "project");
+    const shouldUpdateStatus = updatedUsersAccepted >= usersNeeded;
     
     const updatedProject = {
       ...project,
@@ -262,8 +245,8 @@ export const useRequests = () => {
     toast({
       title: "Accepted",
       description: shouldUpdateStatus 
-        ? `You've accepted the ${project.type}. It has now moved to In Process status.` 
-        : `You've accepted the ${project.type}. It needs more users before it can start.`,
+        ? `You've accepted the ${project.type}. All required users have joined, moving to In Process.` 
+        : `You've accepted the ${project.type}. Waiting for ${usersNeeded - updatedUsersAccepted} more users.`,
     });
     
     setAcceptDialogOpen(false);

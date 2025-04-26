@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { UserProfile } from "@/types/profileTypes";
@@ -75,6 +74,10 @@ const ProfileSidebar = ({ user, logout }: ProfileSidebarProps) => {
         >
           Settings
         </Button>
+      </div>
+      
+      <div className="mt-6 p-4 bg-red-500/10 rounded-lg border border-red-200">
+        <h3 className="text-red-600 font-medium mb-2">Account Actions</h3>
         <Button 
           variant="destructive" 
           className="w-full bg-red-600 hover:bg-red-700 flex items-center justify-center gap-2"
