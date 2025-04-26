@@ -304,7 +304,7 @@ const RequestsTable = ({
                         )}
                       </div>
                       
-                      {userRole === "client" && (request.status === "Pending" || request.status === "Rejected") && (
+                      {userRole === "client" && (
                         <div>
                           {canAcceptRequest(request) ? (
                             <Button 

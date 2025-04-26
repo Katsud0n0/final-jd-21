@@ -116,6 +116,16 @@ export const api = {
       method: 'POST'
     });
     return handleResponse(response);
+  },
+  
+  // New function to check if a user can accept a request
+  canUserAcceptRequest: async (requestId: string, username: string, department: string) => {
+    const response = await fetch(`${API_URL}/requests/${requestId}/can-accept`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, department })
+    });
+    return handleResponse(response);
   }
 };
 

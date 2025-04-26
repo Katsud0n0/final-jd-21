@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -43,7 +42,7 @@ export const useRequests = () => {
       if (Array.isArray(req.departments)) {
         return !req.departments.includes(user.department);
       } else if (typeof req.department === 'string') {
-        return req.department !== user.department;
+        return !req.department.includes(user.department);
       }
       return true;
     });
@@ -363,16 +362,14 @@ export const useRequests = () => {
     const updatedUsersAccepted = (project.usersAccepted || 0) + 1;
     
     // Update status to "In Process" if:
-    // 1. The project is Pending or Rejected
-    // 2. It's a multi-department request and has enough users
-    // 3. It's not a multi-department request (single department case)
-    const shouldUpdateStatus = (
-      (project.status === "Pending" || project.status === "Rejected") && 
+    // 1. It's a multi-department request and has enough users
+    // 2. It's not a multi-department request (single department case)
+    // Note: We're allowing In Process even if status was previously Rejected
+    const shouldUpdateStatus = 
       (
         (project.multiDepartment && updatedUsersAccepted >= (project.usersNeeded || 1)) ||
         !project.multiDepartment
-      )
-    );
+      );
     
     const updatedProject = {
       ...project,
@@ -416,23 +413,23 @@ export const useRequests = () => {
     return false;
   };
 
+  // Fixed the canAcceptRequest function to properly check department inclusion
   const canAcceptRequest = (request: Request) => {
     if (!user || !request || user.role !== "client") return false;
 
-    // Allow accepting requests in Pending or Rejected status
-    const isPendingOrRejected = request.status === "Pending" || request.status === "Rejected";
+    // Allow accepting requests regardless of status (including Rejected)
     const notArchived = !request.archived;
     const isNotCreator = request.creator !== user.username;
     
+    // Check if the request is for the user's department
     const isForUserDepartment = isUserDepartmentIncluded(request);
     
-    const basicConditions = isPendingOrRejected && notArchived && isNotCreator && isForUserDepartment;
+    // Check if user has already accepted
+    const acceptedBy = Array.isArray(request.acceptedBy) ? request.acceptedBy : 
+                      request.acceptedBy ? [request.acceptedBy as string] : [];
+    const notAlreadyAccepted = !acceptedBy.includes(user.username);
     
-    if (!basicConditions) return false;
-    
-    const acceptedBy = Array.isArray(request.acceptedBy) ? request.acceptedBy : [];
-    
-    return !acceptedBy.includes(user.username);
+    return notArchived && isNotCreator && isForUserDepartment && notAlreadyAccepted;
   };
 
   const canAbandonRequest = (request: Request) => {

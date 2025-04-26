@@ -28,8 +28,6 @@ const Dashboard = () => {
     }
     
     // Check for expired requests on component mount
-    // This immediately checks if any requests need to be marked as expired
-    // or deleted based on their status and timestamps
     checkExpiredRequests();
   }, []);
 
@@ -90,6 +88,15 @@ const Dashboard = () => {
           acceptedBy: user?.username || "unknown" // Fix missing acceptedBy
         };
       }
+      
+      // Ensure that multi-department requests and projects always have an array for acceptedBy
+      if ((req.multiDepartment || req.type === "project") && req.acceptedBy && !Array.isArray(req.acceptedBy)) {
+        return {
+          ...req,
+          acceptedBy: [req.acceptedBy]
+        };
+      }
+      
       return req;
     });
     
@@ -178,9 +185,11 @@ const Dashboard = () => {
                       <span className={`px-2 py-1 rounded text-xs ${
                         request.status === "Pending" 
                           ? "bg-jd-orange/20 text-jd-orange"
-                          : request.status === "Completed" 
-                            ? "bg-jd-green/20 text-jd-green"
-                            : "bg-jd-red/20 text-jd-red"
+                          : request.status === "In Process"
+                            ? "bg-blue-500/20 text-blue-500" 
+                            : request.status === "Completed" 
+                              ? "bg-jd-green/20 text-jd-green"
+                              : "bg-jd-red/20 text-jd-red"
                       }`}>
                         {request.status}
                       </span>
@@ -194,7 +203,13 @@ const Dashboard = () => {
                       )}
                     </div>
                   </div>
-                  <p className="text-sm text-jd-mutedText mt-1">Submitted to {request.department}</p>
+                  <p className="text-sm text-jd-mutedText mt-1">
+                    Submitted to: {
+                      Array.isArray(request.departments) 
+                      ? request.departments.join(", ") 
+                      : request.department
+                    }
+                  </p>
                   <p className="text-sm text-jd-mutedText mt-1">{request.dateCreated}</p>
                 </div>
               ))}
