@@ -1,3 +1,4 @@
+
 import { Trash2, Archive, Check, Clock, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -250,7 +251,7 @@ const RequestsTable = ({
                     ) : (
                       <>
                         {request.status === "Pending" ? (
-                          <span>30 days</span>
+                          <span>{request.multiDepartment ? "45 days" : "30 days"}</span>
                         ) : (request.status === "Completed" || request.status === "Rejected") ? (
                           <span>1 day</span>
                         ) : (

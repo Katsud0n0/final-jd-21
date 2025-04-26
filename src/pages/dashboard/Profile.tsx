@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -198,31 +199,70 @@ const Profile = () => {
   // When user marks as completed in a project, mark their completion; update to "Completed" only after all users have marked completed.
   const handleMarkCompleted = (itemId: string) => {
     const now = new Date();
-    const updatedRequests = requests.map((r: Request) => {
-      if (r.id === itemId) {
-        if (r.type === "project" || r.multiDepartment) {
-          const participantsCompleted = Array.isArray(r.participantsCompleted)
-            ? [...r.participantsCompleted]
-            : [];
-          if (!participantsCompleted.includes(user?.username || '')) {
-            participantsCompleted.push(user?.username || '');
-          }
-          const acceptedUsers = Array.isArray(r.acceptedBy) ? r.acceptedBy : [];
-          if (participantsCompleted.length === acceptedUsers.length) {
-            return {
-              ...r,
-              status: "Completed",
-              lastStatusUpdate: now.toISOString(),
-              lastStatusUpdateTime: now.toLocaleTimeString(),
-              participantsCompleted,
-            };
-          }
+    const requestToUpdate = requests.find(r => r.id === itemId);
+    
+    if (!requestToUpdate) {
+      toast({
+        title: "Request not found",
+        description: "The request could not be found.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // For multi-department requests or projects, handle completion differently
+    if (requestToUpdate.type === "project" || requestToUpdate.multiDepartment) {
+      // Get current completed participants or initialize empty array
+      const participantsCompleted = Array.isArray(requestToUpdate.participantsCompleted) 
+        ? [...requestToUpdate.participantsCompleted] 
+        : [];
+      
+      // Add current user if not already in the list
+      if (!participantsCompleted.includes(user?.username || '')) {
+        participantsCompleted.push(user?.username || '');
+      }
+      
+      // Get accepted users
+      const acceptedUsers = Array.isArray(requestToUpdate.acceptedBy) 
+        ? requestToUpdate.acceptedBy 
+        : [];
+      
+      // Only mark as completed if all participants have marked as complete
+      const shouldCompleteRequest = participantsCompleted.length >= acceptedUsers.length;
+      
+      const updatedRequests = requests.map(r => {
+        if (r.id === itemId) {
           return {
             ...r,
             participantsCompleted,
+            ...(shouldCompleteRequest && {
+              status: "Completed",
+              lastStatusUpdate: now.toISOString(),
+              lastStatusUpdateTime: now.toLocaleTimeString()
+            })
           };
         }
-        // Regular requests logic
+        return r;
+      });
+      
+      setRequests(updatedRequests);
+      localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+      
+      const toastMessage = shouldCompleteRequest
+        ? "All participants have marked this as complete."
+        : "Your completion has been recorded. Waiting for others to complete.";
+      
+      toast({
+        title: shouldCompleteRequest ? "Request Completed" : "Progress Saved",
+        description: toastMessage
+      });
+      
+      return;
+    }
+    
+    // Regular requests logic
+    const updatedRequests = requests.map(r => {
+      if (r.id === itemId) {
         return {
           ...r,
           status: "Completed",
@@ -232,30 +272,28 @@ const Profile = () => {
       }
       return r;
     });
+    
     setRequests(updatedRequests);
     localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
     
-    // Update toast message based on whether it's a project/multi-dept or a regular request
-    const completedItem = updatedRequests.find(r => r.id === itemId);
-    if (completedItem && (completedItem.type === "project" || completedItem.multiDepartment)) {
-      const isFullyCompleted = completedItem.status === "Completed";
-      toast({
-        title: isFullyCompleted ? "Request Completed" : "Progress Saved",
-        description: isFullyCompleted 
-          ? "All participants have marked this as complete."
-          : "Your completion has been recorded. Waiting for others to complete.",
-      });
-    } else {
-      toast({
-        title: "Marked as Completed",
-        description: "The item has been marked as completed successfully.",
-      });
-    }
+    toast({
+      title: "Marked as Completed",
+      description: "The item has been marked as completed successfully.",
+    });
   };
 
   // Reject button (previously Abandon)
   const handleAbandon = (itemId: string) => {
     const item = requests.find((r: Request) => r.id === itemId);
+    
+    if (!item) {
+      toast({
+        title: "Request not found",
+        description: "The request you're trying to reject could not be found.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     const now = new Date();
     
@@ -270,19 +308,16 @@ const Profile = () => {
           // Update users accepted count
           const newUsersAccepted = (r.usersAccepted || 0) - 1;
           
-          // If all users have rejected, set status back to Pending
-          const newStatus = newAcceptedBy.length === 0 ? "Pending" : r.status;
+          // Always set to Pending when any user rejects for multi-dept or project
+          const newStatus = "Pending";
           
           return {
             ...r,
             acceptedBy: newAcceptedBy,
             usersAccepted: newUsersAccepted,
             status: newStatus,
-            // Update timestamp if status changed
-            ...(newStatus !== r.status && {
-              lastStatusUpdate: now.toISOString(),
-              lastStatusUpdateTime: now.toLocaleTimeString()
-            })
+            lastStatusUpdate: now.toISOString(),
+            lastStatusUpdateTime: now.toLocaleTimeString()
           };
         }
         return r;
@@ -293,7 +328,7 @@ const Profile = () => {
       
       toast({
         title: "Request rejected",
-        description: "You have been removed from the participants list.",
+        description: "You have been removed from the participants list and the request is now pending.",
       });
       return;
     }

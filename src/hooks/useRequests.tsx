@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -284,8 +283,8 @@ export const useRequests = () => {
       const now = new Date();
       const updatedRequests = requests.map(r => {
         if (r.id === id) {
-          // Set status to Pending when all users have abandoned
-          const newStatus = currentAcceptedBy.length === 0 ? "Pending" : r.status;
+          // Always set status to Pending when any user abandons for multi-dept or project
+          const newStatus = "Pending";
           
           return {
             ...r,
@@ -293,10 +292,8 @@ export const useRequests = () => {
             usersAccepted: (r.usersAccepted || 0) - 1,
             participantsCompleted: participantsCompleted,
             status: newStatus,
-            ...(newStatus === "Pending" && {
-              lastStatusUpdate: now.toISOString(),
-              lastStatusUpdateTime: now.toLocaleTimeString()
-            })
+            lastStatusUpdate: now.toISOString(),
+            lastStatusUpdateTime: now.toLocaleTimeString()
           };
         }
         return r;
@@ -307,7 +304,7 @@ export const useRequests = () => {
       
       toast({
         title: "Request rejected",
-        description: "You have been removed from the participants list.",
+        description: "You have been removed from the participants list and the request is now pending.",
       });
       return;
     }
