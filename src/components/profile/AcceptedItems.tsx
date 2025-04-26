@@ -4,20 +4,12 @@ import { Request } from '@/types/profileTypes';
 import { Check, Clock, Filter } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import RejectionModal from './RejectionModal';
 
 interface AcceptedItemsProps {
   acceptedItems: Request[];
   handleMarkCompleted: (id: string) => void;
-  handleAbandon: (id: string) => void;
+  handleAbandon: (id: string, reason?: string) => void;
   hasMarkedCompleted: (item: Request) => boolean;
   user: any;
 }
@@ -29,8 +21,9 @@ const AcceptedItems = ({
   hasMarkedCompleted,
   user
 }: AcceptedItemsProps) => {
-  const [abandonDialogOpen, setAbandonDialogOpen] = useState(false);
+  const [rejectionModalOpen, setRejectionModalOpen] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [selectedItemType, setSelectedItemType] = useState<'request' | 'project' | 'multi-department'>('request');
   const [typeFilter, setTypeFilter] = useState<string>("all");
   
   // Filter accepted items by type
@@ -42,16 +35,18 @@ const AcceptedItems = ({
     return false;
   });
 
-  const initiateAbandon = (id: string) => {
+  const initiateReject = (id: string, type: string) => {
     setSelectedItemId(id);
-    setAbandonDialogOpen(true);
+    setSelectedItemType(type === 'project' ? 'project' : 
+                        type === 'multi' ? 'multi-department' : 'request');
+    setRejectionModalOpen(true);
   };
 
-  const confirmAbandon = () => {
+  const confirmReject = (reason: string) => {
     if (selectedItemId) {
-      handleAbandon(selectedItemId);
+      handleAbandon(selectedItemId, reason);
     }
-    setAbandonDialogOpen(false);
+    setRejectionModalOpen(false);
     setSelectedItemId(null);
   };
 
@@ -156,10 +151,9 @@ const AcceptedItems = ({
                   <Button
                     size="sm"
                     variant="outline"
-                    className={`border-jd-red text-jd-red hover:bg-jd-red/10 
-                      ${hasMarkedCompleted(item) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    onClick={() => initiateAbandon(item.id)}
-                    disabled={hasMarkedCompleted(item)}
+                    className="border-jd-red text-jd-red hover:bg-jd-red/10"
+                    onClick={() => initiateReject(item.id, item.type === "project" ? "project" : 
+                                              item.multiDepartment ? "multi" : "request")}
                   >
                     Reject
                   </Button>
@@ -187,25 +181,12 @@ const AcceptedItems = ({
         </div>
       )}
       
-      <AlertDialog open={abandonDialogOpen} onOpenChange={setAbandonDialogOpen}>
-        <AlertDialogContent className="bg-jd-card border-jd-card">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reject Request</AlertDialogTitle>
-            <p className="text-jd-mutedText">
-              Are you sure you want to reject this request? For multi-department requests or projects, you will be removed from the participants list and the status will change to "Pending".
-            </p>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="bg-jd-bg hover:bg-jd-bg/80">Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              className="bg-red-600 hover:bg-red-700"
-              onClick={confirmAbandon}
-            >
-              Reject
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <RejectionModal
+        isOpen={rejectionModalOpen}
+        onClose={() => setRejectionModalOpen(false)}
+        onReject={confirmReject}
+        itemType={selectedItemType}
+      />
     </div>
   );
 };

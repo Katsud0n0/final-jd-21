@@ -98,6 +98,17 @@ const Dashboard = () => {
         };
       }
       
+      // Make sure In Process status only applies when 2+ users have accepted for multi/project
+      if ((req.multiDepartment || req.type === "project") && req.status === "In Process") {
+        const acceptedUsers = Array.isArray(req.acceptedBy) ? req.acceptedBy : [];
+        if (acceptedUsers.length < 2) {
+          return {
+            ...req,
+            status: "Pending" // Revert to pending if not enough users
+          };
+        }
+      }
+      
       return req;
     });
     

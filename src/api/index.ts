@@ -1,4 +1,3 @@
-
 // API utilities for connecting to the SQLite backend
 const API_URL = 'http://localhost:3000/api';
 
@@ -100,11 +99,11 @@ export const api = {
     return handleResponse(response);
   },
   
-  rejectRequest: async (requestId: string, username: string) => {
+  rejectRequest: async (requestId: string, username: string, reason?: string) => {
     const response = await fetch(`${API_URL}/requests/${requestId}/reject`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username })
+      body: JSON.stringify({ username, reason })
     });
     return handleResponse(response);
   },

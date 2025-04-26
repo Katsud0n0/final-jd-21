@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +11,9 @@ export const useRequests = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [requests, setRequests] = useState<Request[]>([]);
+  const [rejectionModalOpen, setRejectionModalOpen] = useState(false);
+  const [requestToReject, setRequestToReject] = useState<string | null>(null);
+  const [requestTypeToReject, setRequestTypeToReject] = useState<'request' | 'project' | 'multi-department'>('request');
 
   // Import refactored hooks
   const { 
@@ -287,7 +289,14 @@ export const useRequests = () => {
     });
   };
 
-  const handleAbandon = (id: string) => {
+  const initiateAbandon = (id: string, type: string) => {
+    setRequestToReject(id);
+    setRequestTypeToReject(type === 'project' ? 'project' : 
+                        type === 'multi' ? 'multi-department' : 'request');
+    setRejectionModalOpen(true);
+  };
+
+  const handleAbandon = (id: string, reason?: string) => {
     if (!user) return;
     
     const request = requests.find(r => r.id === id);
@@ -315,6 +324,10 @@ export const useRequests = () => {
         return;
       }
       
+      // Store formatted date for rejection
+      const now = new Date();
+      const formattedDate = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+      
       // Remove the user from acceptedBy list
       currentAcceptedBy.splice(userIndex, 1);
       
@@ -323,18 +336,27 @@ export const useRequests = () => {
         request.participantsCompleted.filter(username => username !== user.username) : 
         [];
       
-      const now = new Date();
+      // Store rejection info
+      const rejections = request.rejections || [];
+      rejections.push({
+        username: user.username,
+        reason: reason || "",
+        date: formattedDate
+      });
+      
       const updatedRequests = requests.map(r => {
         if (r.id === id) {
           // Always set status to Pending when any user abandons for multi-dept or project
+          // or if number of participants falls below 2
           return {
             ...r,
             acceptedBy: currentAcceptedBy,
             usersAccepted: Math.max((r.usersAccepted || 0) - 1, 0),
             participantsCompleted: participantsCompleted,
-            status: "Pending",
+            status: "Pending", // Always set to pending
             lastStatusUpdate: now.toISOString(),
-            lastStatusUpdateTime: now.toLocaleTimeString()
+            lastStatusUpdateTime: now.toLocaleTimeString(),
+            rejections
           };
         }
         return r;
@@ -350,10 +372,19 @@ export const useRequests = () => {
       return;
     }
     
-    // For single department requests
+    // For single department requests, store rejection info
     const now = new Date();
+    const formattedDate = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+    
     const updatedRequests = requests.map(r => {
       if (r.id === id) {
+        const rejections = r.rejections || [];
+        rejections.push({
+          username: user.username,
+          reason: reason || "",
+          date: formattedDate
+        });
+        
         return {
           ...r,
           status: "Rejected",
@@ -361,7 +392,8 @@ export const useRequests = () => {
           lastStatusUpdateTime: now.toLocaleTimeString(),
           statusChangedBy: user.username,
           acceptedBy: [], // Clear acceptedBy for rejected single requests
-          usersAccepted: 0
+          usersAccepted: 0,
+          rejections
         };
       }
       return r;
@@ -374,6 +406,14 @@ export const useRequests = () => {
       title: "Request rejected",
       description: "You have successfully rejected the request.",
     });
+  };
+
+  const confirmReject = (reason: string) => {
+    if (requestToReject) {
+      handleAbandon(requestToReject, reason);
+      setRequestToReject(null);
+      setRejectionModalOpen(false);
+    }
   };
 
   const confirmDelete = () => {
@@ -453,7 +493,7 @@ export const useRequests = () => {
     const updatedUsersAccepted = (project.usersAccepted || 0) + 1;
     
     // Update status to "In Process" if:
-    // 1. It's a multi-department request and has 2+ users
+    // 1. It's a multi-department request/project and has 2+ users
     // 2. It's not a multi-department request (single department case)
     const shouldUpdateStatus = 
       (
@@ -465,7 +505,7 @@ export const useRequests = () => {
       ...project,
       acceptedBy: updatedAcceptedBy,
       usersAccepted: updatedUsersAccepted,
-      status: shouldUpdateStatus ? "In Process" : project.status,
+      status: shouldUpdateStatus ? "In Process" : "Pending", // Keep as Pending if not enough users
       ...(shouldUpdateStatus && {
         lastStatusUpdate: now.toISOString(),
         lastStatusUpdateTime: now.toLocaleTimeString(),
@@ -520,6 +560,11 @@ export const useRequests = () => {
     handleDelete,
     handleArchive,
     handleAbandon,
+    initiateAbandon,
+    confirmReject,
+    rejectionModalOpen,
+    setRejectionModalOpen,
+    requestTypeToReject,
     handleAcceptProject,
     confirmDelete,
     confirmAcceptProject,

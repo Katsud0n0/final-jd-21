@@ -23,6 +23,7 @@ import RequestsTable from "@/components/dashboard/RequestsTable";
 import { useRequests } from "@/hooks/useRequests";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
+import RejectionModal from "@/components/profile/RejectionModal";
 
 const Requests = () => {
   const { user } = useAuth();
@@ -48,7 +49,11 @@ const Requests = () => {
     handleStatusChange,
     handleDelete,
     handleArchive,
-    handleAbandon,
+    initiateAbandon,
+    confirmReject,
+    rejectionModalOpen,
+    setRejectionModalOpen,
+    requestTypeToReject,
     handleAcceptProject,
     confirmDelete,
     confirmAcceptProject,
@@ -99,12 +104,19 @@ const Requests = () => {
         handleStatusChange={handleStatusChange}
         handleDelete={handleDelete}
         handleArchive={handleArchive}
-        handleAbandon={handleAbandon}
+        handleAbandon={initiateAbandon}
         handleAcceptProject={handleAcceptProject}
         confirmDelete={confirmDelete}
         renderDepartmentTags={renderDepartmentTags}
         userRole={user?.role}
         username={user?.username}
+      />
+      
+      <RejectionModal
+        isOpen={rejectionModalOpen}
+        onClose={() => setRejectionModalOpen(false)}
+        onReject={confirmReject}
+        itemType={requestTypeToReject}
       />
       
       {user?.role === "admin" && clearAllRequests && (
@@ -187,6 +199,14 @@ const Requests = () => {
                 <h4 className="text-sm font-medium mb-1">Description:</h4>
                 <p className="text-jd-mutedText text-sm">{selectedRequest.description}</p>
               </div>
+              
+              {/* Display request notes if available */}
+              {selectedRequest.notes && (
+                <div>
+                  <h4 className="text-sm font-medium mb-1">Notes:</h4>
+                  <p className="text-jd-mutedText text-sm">{selectedRequest.notes}</p>
+                </div>
+              )}
               
               <div>
                 <h4 className="text-sm font-medium mb-1">Accepted By:</h4>

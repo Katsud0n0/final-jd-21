@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -14,7 +13,7 @@ import RecentActivity from "@/components/profile/RecentActivity";
 import AcceptedItems from "@/components/profile/AcceptedItems";
 import HistoryItems from "@/components/profile/HistoryItems";
 import ArchivedProjects from "@/components/profile/ArchivedProjects";
-import DebugRequests from "@/components/profile/DebugRequests";
+import RejectionNotes from "@/components/profile/RejectionNotes";
 
 const Profile = () => {
   const { user, logout } = useAuth();
@@ -281,8 +280,8 @@ const Profile = () => {
     });
   };
 
-  // Reject button (previously Abandon)
-  const handleAbandon = (itemId: string) => {
+  // Reject button (previously Abandon) - updated to handle rejection reasons
+  const handleAbandon = (itemId: string, reason?: string) => {
     if (!user) return;
     
     const item = requests.find((r: Request) => r.id === itemId);
@@ -297,6 +296,7 @@ const Profile = () => {
     }
     
     const now = new Date();
+    const formattedDate = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
     
     // For multi-department requests or projects, only remove this user
     if (item && (item.multiDepartment || item.type === "project")) {
@@ -317,6 +317,14 @@ const Profile = () => {
             ? r.participantsCompleted.filter(username => username !== user.username)
             : [];
           
+          // Store rejection information
+          const rejections = r.rejections || [];
+          rejections.push({
+            username: user.username,
+            reason: reason || "",
+            date: formattedDate
+          });
+          
           return {
             ...r,
             acceptedBy: newAcceptedBy,
@@ -324,7 +332,8 @@ const Profile = () => {
             participantsCompleted: participantsCompleted,
             status: newStatus,
             lastStatusUpdate: now.toISOString(),
-            lastStatusUpdateTime: now.toLocaleTimeString()
+            lastStatusUpdateTime: now.toLocaleTimeString(),
+            rejections
           };
         }
         return r;
@@ -341,14 +350,26 @@ const Profile = () => {
     }
     
     // For regular requests, mark as rejected
-    const updatedRequests = requests.map((r: Request) => 
-      r.id === itemId ? { 
-        ...r, 
-        status: "Rejected", 
-        lastStatusUpdate: now.toISOString(),
-        lastStatusUpdateTime: now.toLocaleTimeString()
-      } : r
-    );
+    const updatedRequests = requests.map((r: Request) => {
+      if (r.id === itemId) {
+        // Store rejection information
+        const rejections = r.rejections || [];
+        rejections.push({
+          username: user.username,
+          reason: reason || "",
+          date: formattedDate
+        });
+        
+        return { 
+          ...r, 
+          status: "Rejected", 
+          lastStatusUpdate: now.toISOString(),
+          lastStatusUpdateTime: now.toLocaleTimeString(),
+          rejections
+        };
+      }
+      return r;
+    });
     
     setRequests(updatedRequests);
     localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
@@ -405,9 +426,6 @@ const Profile = () => {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-1">
         <ProfileSidebar user={user} logout={logout} />
-        <div className="mt-4">
-          <DebugRequests />
-        </div>
       </div>
       
       <div className="lg:col-span-2 space-y-6">
@@ -426,6 +444,9 @@ const Profile = () => {
           <TabsContent value="activity" className="space-y-6 mt-4">
             <ActivitySummary userRequests={userRequests} />
             <RecentActivity recentActivity={recentActivity} />
+            {user?.username && (
+              <RejectionNotes userRequests={requests.filter(r => r.creator === user.username)} />
+            )}
           </TabsContent>
 
           <TabsContent value="accepted" className="mt-4">
