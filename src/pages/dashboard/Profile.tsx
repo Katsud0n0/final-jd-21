@@ -246,13 +246,13 @@ const Profile = () => {
     });
   };
 
-  // Abandon button should be disabled for projects
+  // Reject button (previously Abandon)
   const handleAbandon = (itemId: string) => {
     const item = requests.find((r: Request) => r.id === itemId);
     
     const now = new Date();
     
-    // For multi-department requests, only remove this user
+    // For multi-department requests or projects, only remove this user
     if (item && (item.multiDepartment || item.type === "project")) {
       const updatedRequests = requests.map((r: Request) => {
         if (r.id === itemId) {
@@ -263,10 +263,19 @@ const Profile = () => {
           // Update users accepted count
           const newUsersAccepted = (r.usersAccepted || 0) - 1;
           
+          // If all users have rejected, set status back to Pending
+          const newStatus = newAcceptedBy.length === 0 ? "Pending" : r.status;
+          
           return {
             ...r,
             acceptedBy: newAcceptedBy,
-            usersAccepted: newUsersAccepted
+            usersAccepted: newUsersAccepted,
+            status: newStatus,
+            // Update timestamp if status changed
+            ...(newStatus !== r.status && {
+              lastStatusUpdate: now.toISOString(),
+              lastStatusUpdateTime: now.toLocaleTimeString()
+            })
           };
         }
         return r;

@@ -1,3 +1,4 @@
+
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -94,6 +95,7 @@ const Requests = () => {
         canDeleteRequest={canDeleteRequest}
         canArchiveProject={canArchiveProject}
         canAcceptRequest={canAcceptRequest}
+        canAbandonRequest={canAbandonRequest}
         handleStatusChange={handleStatusChange}
         handleDelete={handleDelete}
         handleArchive={handleArchive}
@@ -190,6 +192,12 @@ const Requests = () => {
                 <h4 className="text-sm font-medium mb-1">Accepted By:</h4>
                 {renderAcceptedByDetails(selectedRequest)}
               </div>
+              
+              {selectedRequest.type === "request" && (
+                <div className="mt-2 p-2 bg-red-100 text-red-800 text-xs rounded-md">
+                  If rejected, please submit a new request to restart
+                </div>
+              )}
             </div>
           )}
         </DialogContent>

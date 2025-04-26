@@ -24,7 +24,7 @@ interface AcceptedItemsProps {
 const AcceptedItems = ({ acceptedItems, handleMarkCompleted, handleAbandon, hasMarkedCompleted, user }: AcceptedItemsProps) => {
   const { toast } = useToast();
   
-  const onAbandon = (itemId: string) => {
+  const onReject = (itemId: string) => {
     handleAbandon(itemId);
     toast({
       title: "Request rejected",
@@ -34,7 +34,7 @@ const AcceptedItems = ({ acceptedItems, handleMarkCompleted, handleAbandon, hasM
 
   const renderDepartments = (item: Request) => {
     if (item.departments && Array.isArray(item.departments)) {
-      const maxDisplayed = 2; // Show at most 2 departments, then show "+X more"
+      const maxDisplayed = l; // Show at most 2 departments, then show "+X more"
       const total = item.departments.length;
       
       if (total <= maxDisplayed) {
@@ -134,6 +134,12 @@ const AcceptedItems = ({ acceptedItems, handleMarkCompleted, handleAbandon, hasM
                               {renderAcceptedByDetails(item)}
                             </div>
                           </div>
+
+                          {item.type === "request" && (
+                            <div className="mt-2 p-2 bg-red-100 text-red-800 text-xs rounded-md">
+                              If rejected, please submit a new request to restart
+                            </div>
+                          )}
                         </div>
                       </DialogContent>
                     </Dialog>
@@ -178,7 +184,7 @@ const AcceptedItems = ({ acceptedItems, handleMarkCompleted, handleAbandon, hasM
                       size="sm" 
                       variant="destructive"
                       className="flex items-center gap-1"
-                      onClick={() => onAbandon(item.id)}
+                      onClick={() => onReject(item.id)}
                     >
                       <X size={16} />
                       Reject

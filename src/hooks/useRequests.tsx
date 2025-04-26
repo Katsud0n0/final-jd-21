@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -40,13 +39,12 @@ export const useRequests = () => {
     const storedRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
     
     const filteredRequests = storedRequests.filter((req: Request) => {
-      // Check if the department is completely different than the admin's department
       if (Array.isArray(req.departments)) {
         return !req.departments.includes(user.department);
       } else if (typeof req.department === 'string') {
         return req.department !== user.department;
       }
-      return true; // Keep items without department info
+      return true;
     });
     
     localStorage.setItem("jd-requests", JSON.stringify(filteredRequests));
@@ -255,21 +253,24 @@ export const useRequests = () => {
       
       currentAcceptedBy.splice(userIndex, 1);
       
-      // Remove user from participantsCompleted if they exist there
       const participantsCompleted = request.participantsCompleted ? 
         request.participantsCompleted.filter(username => username !== user.username) : 
         [];
       
       const updatedRequests = requests.map(r => {
         if (r.id === id) {
+          const newStatus = r.status === "In Process" && currentAcceptedBy.length === 0 ? "Pending" : r.status;
+          
           return {
             ...r,
             acceptedBy: currentAcceptedBy,
             usersAccepted: (r.usersAccepted || 0) - 1,
             participantsCompleted: participantsCompleted,
-            // Don't set status to Rejected for multi-department requests
-            // so others can still accept it
-            status: r.status, 
+            status: newStatus,
+            ...(newStatus !== r.status && {
+              lastStatusUpdate: new Date().toISOString(),
+              lastStatusUpdateTime: new Date().toLocaleTimeString()
+            })
           };
         }
         return r;
@@ -359,7 +360,13 @@ export const useRequests = () => {
     const updatedAcceptedBy = [...currentAcceptedBy, user.username];
     const updatedUsersAccepted = (project.usersAccepted || 0) + 1;
     
-    const shouldUpdateStatus = updatedUsersAccepted >= (project.usersNeeded || 1) && project.status === "Pending";
+    const shouldUpdateStatus = (
+      (project.status === "Pending" || project.status === "Rejected") && 
+      (
+        (project.multiDepartment && updatedUsersAccepted >= (project.usersNeeded || 1)) ||
+        !project.multiDepartment
+      )
+    );
     
     const updatedProject = {
       ...project,
@@ -406,41 +413,30 @@ export const useRequests = () => {
   const canAcceptRequest = (request: Request) => {
     if (!user || !request || user.role !== "client") return false;
 
-    // For client users, allow accepting requests that are pending and not archived
-    // Users shouldn't be able to accept their own requests
-    const isPending = request.status === "Pending";
+    const isPendingOrRejected = request.status === "Pending" || request.status === "Rejected";
     const notArchived = !request.archived;
     const isNotCreator = request.creator !== user.username;
     
-    // Check if the request is for the user's department
     const isForUserDepartment = isUserDepartmentIncluded(request);
     
-    // Basic conditions that apply to both projects and requests
-    const basicConditions = isPending && notArchived && isNotCreator && isForUserDepartment;
+    const basicConditions = isPendingOrRejected && notArchived && isNotCreator && isForUserDepartment;
     
     if (!basicConditions) return false;
     
-    // Check if user has already accepted this request or project
-    const acceptedBy = Array.isArray(request.acceptedBy) ? request.acceptedBy : 
-                       request.acceptedBy ? [request.acceptedBy] : [];
+    const acceptedBy = Array.isArray(request.acceptedBy) ? request.acceptedBy : [];
     
-    // Make sure user hasn't already accepted this request/project
     return !acceptedBy.includes(user.username);
   };
 
   const canAbandonRequest = (request: Request) => {
     if (!user || !request || user.role !== "client") return false;
 
-    // Allow abandoning all types of requests and multi-department projects
     if (request.type === "project" && !request.multiDepartment) return false;
 
-    // Can't abandon if status not pending or in process
     if (request.status !== "Pending" && request.status !== "In Process") return false;
 
-    // Check if user has accepted this request/project
     const acceptedBy = Array.isArray(request.acceptedBy) ? request.acceptedBy : [];
     
-    // User can abandon if they've accepted this request/project
     return acceptedBy.includes(user.username);
   };
 
@@ -490,6 +486,42 @@ export const useRequests = () => {
   };
 
   const renderDepartmentTags = (request: Request) => {
+    if (request.type === "project") {
+      const depts = Array.isArray(request.departments) ? request.departments : 
+                    request.department ? [request.department] : [];
+      
+      const maxDisplayed = 2;
+      
+      if (depts.length <= maxDisplayed) {
+        return (
+          <div className="flex flex-wrap gap-1">
+            {depts.map(dept => (
+              <span key={dept} className="bg-jd-bg text-xs px-2 py-1 rounded-full">
+                {dept}
+              </span>
+            ))}
+          </div>
+        );
+      } else {
+        const displayed = depts.slice(0, maxDisplayed);
+        const remaining = depts.length - maxDisplayed;
+        
+        return (
+          <div className="flex flex-wrap gap-1">
+            {displayed.map(dept => (
+              <span key={dept} className="bg-jd-bg text-xs px-2 py-1 rounded-full">
+                {dept}
+              </span>
+            ))}
+            <span className="bg-jd-purple/20 text-jd-purple text-xs px-2 py-1 rounded-full cursor-pointer" 
+                  onClick={() => openDetailsDialog(request)}>
+              +{remaining} more
+            </span>
+          </div>
+        );
+      }
+    }
+    
     const depts = request.departments || [request.department as string];
     const maxDisplayed = 2;
     

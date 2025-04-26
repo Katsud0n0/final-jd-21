@@ -1,3 +1,4 @@
+
 import { Trash2, Archive, Check, Clock, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -145,6 +146,12 @@ const RequestsTable = ({
                                 <p className="text-jd-mutedText text-sm">None yet</p>
                               )}
                             </div>
+                            
+                            {request.status === "Rejected" && request.type === "request" && (
+                              <div className="mt-2 p-2 bg-red-100 text-red-800 text-xs rounded-md">
+                                If rejected, please submit a new request to restart
+                              </div>
+                            )}
                           </div>
                         </DialogContent>
                       </Dialog>
@@ -292,7 +299,7 @@ const RequestsTable = ({
                         )}
                       </div>
                       
-                      {userRole === "client" && request.status === "Pending" && (
+                      {userRole === "client" && (request.status === "Pending" || request.status === "Rejected") && (
                         <div>
                           {canAcceptRequest(request) ? (
                             <Button 
