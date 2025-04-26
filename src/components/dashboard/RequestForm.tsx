@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -143,15 +144,21 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
       
       const now = new Date();
       
-      // For projects and multi-department requests, automatically include creator in accepted users
-      const isMultiDept = formData.type === "project" || (formData.type === "request" && multiDepartmentRequest);
-      const departments = multiDepartmentRequest ? selectedDepartments : [formData.department];
+      // Determine departments based on selection type
+      let departmentList: string[] = [];
       
+      if (formData.type === "project" || multiDepartmentRequest) {
+        departmentList = [...selectedDepartments];
+      } else {
+        departmentList = [formData.department];
+      }
+      
+      // Create the new request/project
       const newItem = {
         id: `#${Math.floor(100000 + Math.random() * 900000)}`,
         title: formData.title,
-        department: isMultiDept ? departments[0] : formData.department,
-        departments: isMultiDept ? departments : [formData.department],
+        department: departmentList[0] || user?.department || "General",  // Primary department
+        departments: departmentList,  // All departments as an array
         status: "Pending",
         dateCreated: now.toLocaleDateString("en-GB"),
         creator: user?.username || "user",
@@ -161,20 +168,21 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         createdAt: now.toISOString(),
         creatorRole: user?.role || "client",
         isExpired: false,
-        acceptedBy: isMultiDept ? [user?.username || "user"] : [], // Auto-add creator for multi-dept
-        usersAccepted: isMultiDept ? 1 : 0, // Start count at 1 for creator if multi-dept
-        completedBy: [], // Track who marked as complete
-        multiDepartment: multiDepartmentRequest,
+        // For projects and multi-dept requests, auto-add creator
+        acceptedBy: formData.type === "project" ? [user?.username || "user"] : [],
+        usersAccepted: formData.type === "project" ? 1 : 0,
+        completedBy: [],
+        multiDepartment: formData.type === "project" || multiDepartmentRequest,
         ...(formData.type === "project" && {
           priority: formData.priority,
           archived: false,
           usersNeeded: parseInt(formData.usersNeeded) + 1, // Add 1 to include creator
         }),
         ...(formData.type === "request" && multiDepartmentRequest && {
-          usersNeeded: departments.length, // For multi-department requests
+          usersNeeded: departmentList.length,
         }),
-        ...(formData.type === "request" && formData.relatedProject && {
-          relatedProject: formData.relatedProject !== "none" ? formData.relatedProject : null,
+        ...(formData.relatedProject && formData.relatedProject !== "none" && {
+          relatedProject: formData.relatedProject,
         }),
       };
       

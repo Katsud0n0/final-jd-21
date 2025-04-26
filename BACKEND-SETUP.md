@@ -1,4 +1,3 @@
-
 # JD Frameworks – Backend Implementation Guide
 
 ## Prerequisites
@@ -412,7 +411,6 @@ app.get('/api/departments', async (req, res) => {
 // 3. Request Routes
 app.get('/api/requests', async (req, res) => {
   try {
-    // Get all requests with their participants
     const requests = await runQuery(`
       SELECT r.*, 
         GROUP_CONCAT(DISTINCT p.username) as acceptedBy,
@@ -423,36 +421,43 @@ app.get('/api/requests', async (req, res) => {
       ORDER BY r.createdAt DESC
     `);
     
-    // Process each request to ensure consistent acceptedBy format
-    requests.forEach(request => {
-      // For regular requests, store acceptedBy as string (single user)
-      if (request.type === 'request') {
-        const acceptedUsers = request.acceptedBy ? request.acceptedBy.split(',') : [];
-        request.acceptedBy = acceptedUsers[0] || null; // Take first user or null
-      } 
-      // For projects, store acceptedBy as array
-      else if (request.type === 'project') {
-        request.acceptedBy = request.acceptedBy ? request.acceptedBy.split(',') : [];
-        // Ensure creator is included in acceptedBy for projects
-        if (!request.acceptedBy.includes(request.creator)) {
-          request.acceptedBy.push(request.creator);
-        }
-      }
-      
-      // Always keep completedBy as array
-      request.completedBy = request.completedBy ? request.completedBy.split(',').filter(Boolean) : [];
-      
-      // Parse departments JSON if it exists
+    // Process each request to handle departments and participants correctly
+    for (const request of requests) {
+      // Parse the departments field which is stored as JSON string
       if (request.departments) {
         try {
           request.departments = JSON.parse(request.departments);
         } catch (e) {
+          // Fallback if parsing fails
           request.departments = [request.department];
         }
       } else {
         request.departments = [request.department];
       }
-    });
+      
+      // Format participants based on request type
+      if (request.acceptedBy) {
+        const acceptedUsersList = request.acceptedBy.split(',');
+        
+        if (request.type === 'request') {
+          // For requests, it's typically a single user
+          request.acceptedBy = acceptedUsersList[0] || null;
+        } else {
+          // For projects, it's an array of users
+          request.acceptedBy = acceptedUsersList;
+          
+          // Ensure creator is included in acceptedBy for projects
+          if (!acceptedUsersList.includes(request.creator)) {
+            request.acceptedBy.push(request.creator);
+          }
+        }
+      } else {
+        request.acceptedBy = request.type === 'project' ? [request.creator] : null;
+      }
+      
+      // Always keep completedBy as array
+      request.completedBy = request.completedBy ? request.completedBy.split(',').filter(Boolean) : [];
+    }
     
     res.json(requests);
   } catch (err) {
@@ -615,6 +620,29 @@ app.post('/api/requests/:id/accept', async (req, res) => {
     
     const request = existingRequest[0];
     
+    // Parse departments array
+    let departments = [];
+    try {
+      departments = JSON.parse(request.departments || '[]');
+    } catch (e) {
+      departments = [request.department];
+    }
+    
+    // Get user's department
+    const userInfo = await runQuery('SELECT department FROM users WHERE username = ?', [username]);
+    if (userInfo.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userDepartment = userInfo[0].department;
+    
+    // Check if user's department is allowed for this request
+    if (!departments.includes(userDepartment)) {
+      return res.status(403).json({ 
+        error: 'You cannot accept this request as your department is not included in the required departments'
+      });
+    }
+    
     // For regular requests, ensure only one user can accept
     if (request.type === 'request') {
       const currentAccepted = await runQuery(
@@ -656,20 +684,22 @@ app.post('/api/requests/:id/accept', async (req, res) => {
       [requestId, username, now]
     );
     
-    // Update request status
+    // Update request status and usersAccepted count
     if (request.type === 'request') {
       await runCommand(
         'UPDATE requests SET status = ?, lastStatusUpdate = ?, lastStatusUpdateTime = ? WHERE id = ?',
         ['In Process', new Date().toLocaleDateString('en-GB'), now, requestId]
       );
     } else {
-      // For projects, check if we've reached required participants
-      const updatedParticipants = await runQuery(
-        'SELECT COUNT(*) as count FROM request_participants WHERE requestId = ? AND hasAccepted = 1',
+      // Update usersAccepted count
+      await runCommand(
+        'UPDATE requests SET usersAccepted = usersAccepted + 1 WHERE id = ?',
         [requestId]
       );
       
-      if (updatedParticipants[0].count + 1 >= request.usersNeeded) { // +1 for creator
+      // For projects, check if we've reached required participants
+      const updatedRequest = await runQuery('SELECT * FROM requests WHERE id = ?', [requestId]);
+      if (updatedRequest[0].usersAccepted >= updatedRequest[0].usersNeeded) {
         await runCommand(
           'UPDATE requests SET status = ?, lastStatusUpdate = ?, lastStatusUpdateTime = ? WHERE id = ?',
           ['In Process', new Date().toLocaleDateString('en-GB'), now, requestId]
@@ -854,12 +884,9 @@ app.get('/api/requests/user/:username', async (req, res) => {
       ORDER BY r.createdAt DESC
     `, [username, username]);
     
-    // Convert group_concat results to arrays and parse JSON fields
-    [...createdRequests, ...acceptedRequests].forEach(request => {
-      request.acceptedBy = request.acceptedBy ? request.acceptedBy.split(',') : [];
-      request.completedBy = request.completedBy ? request.completedBy.split(',') : [];
-      
-      // Parse departments JSON if it exists
+    // Process each request to handle departments and participants correctly
+    const processRequest = (request) => {
+      // Parse departments JSON
       if (request.departments) {
         try {
           request.departments = JSON.parse(request.departments);
@@ -870,11 +897,21 @@ app.get('/api/requests/user/:username', async (req, res) => {
         request.departments = [request.department];
       }
       
-      // For projects, confirm creator is automatically included in acceptedBy
+      // Format acceptedBy and completedBy fields
+      request.acceptedBy = request.acceptedBy ? request.acceptedBy.split(',') : [];
+      request.completedBy = request.completedBy ? request.completedBy.split(',') : [];
+      
+      // For projects, ensure creator is included in acceptedBy
       if (request.type === 'project' && !request.acceptedBy.includes(request.creator)) {
         request.acceptedBy.push(request.creator);
       }
-    });
+      
+      return request;
+    };
+    
+    // Process all requests
+    createdRequests.forEach(processRequest);
+    acceptedRequests.forEach(processRequest);
     
     res.json({
       created: createdRequests,
@@ -911,7 +948,6 @@ app.get('/api/requests/filter', async (req, res) => {
     // Add department filter 
     if (department) {
       // Either primary department matches or it's in the JSON departments array
-      // This is a simple approach - in a real DB you'd use JSON functions
       query += ' AND (r.department = ? OR r.departments LIKE ?)';
       params.push(department);
       params.push(`%${department}%`);
@@ -934,9 +970,6 @@ app.get('/api/requests/filter', async (req, res) => {
     
     // Process the results
     requests.forEach(request => {
-      request.acceptedBy = request.acceptedBy ? request.acceptedBy.split(',') : [];
-      request.completedBy = request.completedBy ? request.completedBy.split(',') : [];
-      
       // Parse departments JSON
       if (request.departments) {
         try {
@@ -948,10 +981,26 @@ app.get('/api/requests/filter', async (req, res) => {
         request.departments = [request.department]; 
       }
       
-      // For projects, confirm creator is automatically included
-      if (request.type === 'project' && !request.acceptedBy.includes(request.creator)) {
-        request.acceptedBy.push(request.creator);
+      // Format acceptedBy based on request type
+      if (request.acceptedBy) {
+        const acceptedUsers = request.acceptedBy.split(',');
+        if (request.type === 'request') {
+          // For regular requests, it's typically a single user
+          request.acceptedBy = acceptedUsers[0] || null;
+        } else {
+          // For projects, it's an array
+          request.acceptedBy = acceptedUsers;
+          // Ensure creator is included for projects
+          if (!acceptedUsers.includes(request.creator)) {
+            request.acceptedBy.push(request.creator);
+          }
+        }
+      } else {
+        request.acceptedBy = request.type === 'project' ? [request.creator] : null;
       }
+      
+      // Always keep completedBy as array
+      request.completedBy = request.completedBy ? request.completedBy.split(',').filter(Boolean) : [];
     });
     
     res.json(requests);
@@ -1115,329 +1164,62 @@ app.listen(PORT, () => {
 });
 ```
 
-## API Endpoints Implementation
+## Running the Backend
 
-The server.js file above includes all necessary API endpoints:
+To start using your SQLite backend with the JD Frameworks application:
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/users` | GET | Get all users |
-| `/api/users` | POST | Create a new user |
-| `/api/users/:id` | GET | Get a user by ID |
-| `/api/users/:id` | PUT | Update a user |
-| `/api/users/login` | POST | Login a user or create if new |
-| `/api/departments` | GET | Get all departments |
-| `/api/requests` | GET | Get all requests |
-| `/api/requests` | POST | Create a new request |
-| `/api/requests/:id` | PUT | Update a request |
-| `/api/requests/:id` | DELETE | Delete a request |
-| `/api/requests/:id/accept` | POST | Accept a request |
-| `/api/requests/:id/complete` | POST | Mark a request as complete |
-| `/api/requests/:id/abandon` | POST | Abandon a request |
-| `/api/requests/user/:username` | GET | Get requests for a specific user |
-| `/api/requests/filter` | GET | Filter requests by criteria |
-| `/api/requests/check-expiration` | POST | Check and process expired requests |
-
-## Frontend Integration
-
-To integrate the SQLite backend with the frontend, you'll need to replace the localStorage calls with API calls. Here's a simple utility file to help with that:
-
-```javascript
-// src/utils/api.js
-
-const API_URL = 'http://localhost:3000/api';
-
-export const api = {
-  // User endpoints
-  async getUsers() {
-    const response = await fetch(`${API_URL}/users`);
-    return await response.json();
-  },
-  
-  async getUser(id) {
-    const response = await fetch(`${API_URL}/users/${id}`);
-    return await response.json();
-  },
-  
-  async createUser(userData) {
-    const response = await fetch(`${API_URL}/users`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(userData)
-    });
-    return await response.json();
-  },
-  
-  async updateUser(id, userData) {
-    const response = await fetch(`${API_URL}/users/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(userData)
-    });
-    return await response.json();
-  },
-  
-  async login(username, password) {
-    const response = await fetch(`${API_URL}/users/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    });
-    return await response.json();
-  },
-  
-  // Request endpoints
-  async getRequests() {
-    const response = await fetch(`${API_URL}/requests`);
-    return await response.json();
-  },
-  
-  async createRequest(requestData) {
-    const response = await fetch(`${API_URL}/requests`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestData)
-    });
-    return await response.json();
-  },
-  
-  async updateRequest(id, requestData) {
-    const response = await fetch(`${API_URL}/requests/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestData)
-    });
-    return await response.json();
-  },
-  
-  async deleteRequest(id) {
-    const response = await fetch(`${API_URL}/requests/${id}`, {
-      method: 'DELETE'
-    });
-    return await response.json();
-  },
-  
-  async acceptRequest(id, username) {
-    const response = await fetch(`${API_URL}/requests/${id}/accept`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username })
-    });
-    return await response.json();
-  },
-  
-  async completeRequest(id, username) {
-    const response = await fetch(`${API_URL}/requests/${id}/complete`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username })
-    });
-    return await response.json();
-  },
-  
-  async abandonRequest(id, username) {
-    const response = await fetch(`${API_URL}/requests/${id}/abandon`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username })
-    });
-    return await response.json();
-  },
-  
-  async getUserRequests(username) {
-    const response = await fetch(`${API_URL}/requests/user/${username}`);
-    return await response.json();
-  },
-  
-  async filterRequests(filters) {
-    const queryParams = new URLSearchParams(filters).toString();
-    const response = await fetch(`${API_URL}/requests/filter?${queryParams}`);
-    return await response.json();
-  },
-  
-  async checkExpiredRequests() {
-    const response = await fetch(`${API_URL}/requests/check-expiration`, {
-      method: 'POST'
-    });
-    return await response.json();
-  },
-  
-  // Department endpoints
-  async getDepartments() {
-    const response = await fetch(`${API_URL}/departments`);
-    return await response.json();
-  }
-};
-```
-
-## Running the Application
-
-1. Create `.env` file in your backend project root:
-```
-PORT=3000
-DATABASE_PATH=./database/jd_frameworks.db
-```
-
-2. Initialize the database:
+1. First, set up the database:
 ```bash
+cd jd-frameworks-backend
 node setup-database.js
 ```
 
-3. Start the Express server:
+2. Start the Express server:
 ```bash
 node server.js
 ```
 
-## API Documentation
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/users` | GET | Get all users |
-| `/api/users` | POST | Create a new user |
-| `/api/users/:id` | GET | Get a user by ID |
-| `/api/users/:id` | PUT | Update a user |
-| `/api/users/login` | POST | Login a user or create if new |
-| `/api/departments` | GET | Get all departments |
-| `/api/requests` | GET | Get all requests |
-| `/api/requests` | POST | Create a new request |
-| `/api/requests/:id` | PUT | Update a request |
-| `/api/requests/:id` | DELETE | Delete a request |
-| `/api/requests/:id/accept` | POST | Accept a request |
-| `/api/requests/:id/complete` | POST | Mark a request as complete |
-| `/api/requests/:id/abandon` | POST | Abandon a request |
-| `/api/requests/user/:username` | GET | Get requests for a specific user |
-| `/api/requests/filter` | GET | Filter requests by criteria |
-| `/api/requests/check-expiration` | POST | Check and process expired requests |
+This will start your backend server on port 3000 (or another port if specified in a .env file).
 
 ## Frontend Integration
 
-Here's an example of how to integrate the SQLite backend with your React frontend:
+To connect your frontend to this backend, you'll need to update your API calls. Here's a simple example:
 
-```typescript
-// src/utils/api.ts
-
+```javascript
+// In your frontend code, create an api.js file:
 const API_URL = 'http://localhost:3000/api';
 
 export const api = {
-  // User endpoints
-  async getUsers() {
-    const response = await fetch(`${API_URL}/users`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch users');
-    }
-    return await response.json();
-  },
-  
-  async createUser(userData: any) {
-    const response = await fetch(`${API_URL}/users`, {
+  login: async (username) => {
+    const response = await fetch(`${API_URL}/users/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(userData)
+      body: JSON.stringify({ username })
     });
-    if (!response.ok) {
-      throw new Error('Failed to create user');
-    }
-    return await response.json();
+    return response.json();
   },
   
-  // Request endpoints
-  async getRequests() {
+  getRequests: async () => {
     const response = await fetch(`${API_URL}/requests`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch requests');
-    }
-    return await response.json();
+    return response.json();
   },
   
-  async createRequest(requestData: any) {
-    const response = await fetch(`${API_URL}/requests`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestData)
-    });
-    if (!response.ok) {
-      throw new Error('Failed to create request');
-    }
-    return await response.json();
-  },
-  
-  async updateRequest(id: string, requestData: any) {
-    const response = await fetch(`${API_URL}/requests/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestData)
-    });
-    if (!response.ok) {
-      throw new Error('Failed to update request');
-    }
-    return await response.json();
-  },
-  
-  // Add other API endpoints as needed...
+  // Add other API methods as needed
 };
-
-export default api;
 ```
 
-## Error Handling
+## Running Both Frontend and Backend
 
-The backend includes robust error handling. All endpoints return appropriate HTTP status codes:
-
-- 200: Success
-- 201: Created
-- 400: Bad Request
-- 401: Unauthorized
-- 403: Forbidden
-- 404: Not Found
-- 500: Internal Server Error
-
-Each error response includes a descriptive message:
-
-```json
-{
-  "error": "Detailed error message here"
-}
-```
-
-## Security Considerations
-
-1. CORS is enabled but should be configured for your production domain
-2. Input validation is performed on all endpoints
-3. SQL injection is prevented through parameterized queries
-4. Sensitive data is not logged
-
-## Production Deployment
-
-For production deployment:
-
-1. Set appropriate environment variables
-2. Configure CORS for your domain
-3. Use PM2 or similar for process management:
-
+1. Terminal 1 (Backend): 
 ```bash
-npm install -g pm2
-pm2 start server.js --name jd-frameworks-backend
+cd jd-frameworks-backend
+node setup-database.js  # First time only
+node server.js
 ```
 
-## Troubleshooting
-
-Common issues and solutions:
-
-1. Database connection errors:
-   - Check if the database directory exists
-   - Verify file permissions
-   - Ensure SQLite is installed
-
-2. CORS errors:
-   - Check the allowed origins in server.js
-   - Verify the frontend is making requests to the correct URL
-
-3. Request timeout errors:
-   - Check database indexes
-   - Optimize queries if needed
-
-For detailed logs:
+2. Terminal 2 (Frontend):
 ```bash
-pm2 logs jd-frameworks-backend
+npm run dev
 ```
 
+Now your React application will connect to your SQLite backend for persistent data storage!
