@@ -1,4 +1,3 @@
-
 import { Trash2, Archive, Check, Clock, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -310,19 +309,6 @@ const RequestsTable = ({
                             </div>
                           )}
                         </div>
-                      )}
-                      
-                      {canAbandonRequest && handleAbandon && 
-                      canAbandonRequest(request) && 
-                      (request.status === "Pending" || request.status === "In Process") && (
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="w-full mt-1 bg-jd-orange/10 text-jd-orange hover:bg-jd-orange/20 border-jd-orange/20"
-                          onClick={() => handleAbandon(request.id)}
-                        >
-                          Abandon {request.type === "project" ? "Project" : "Request"}
-                        </Button>
                       )}
                     </div>
                   </td>

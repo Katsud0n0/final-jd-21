@@ -1,4 +1,3 @@
-
 export interface Request {
   id: string;
   title: string;
@@ -22,7 +21,9 @@ export interface Request {
   usersAccepted?: number;
   participantsCompleted?: string[];
   multiDepartment?: boolean;
-  statusChangedBy?: string; // Track who changed the status
+  statusChangedBy?: string;
+  priority?: string;
+  relatedProject?: string | null;
 }
 
 export interface UserProfile {

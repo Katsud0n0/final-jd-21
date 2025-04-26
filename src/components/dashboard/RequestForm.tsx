@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -255,7 +254,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
                   htmlFor="multi-department"
                   className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                 >
-                  Request requires multiple departments (1-2)
+                  Requests that requires multiple departments (1-2)
                 </label>
               </div>
             </div>

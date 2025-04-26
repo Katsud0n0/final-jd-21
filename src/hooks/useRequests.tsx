@@ -139,7 +139,6 @@ export const useRequests = () => {
     if (!user) return;
     
     const now = new Date();
-    
     const requestToUpdate = requests.find(r => r.id === requestId);
     
     if (requestToUpdate && (requestToUpdate.status === "Completed" || requestToUpdate.status === "Rejected")) {
@@ -149,6 +148,30 @@ export const useRequests = () => {
         variant: "destructive"
       });
       return;
+    }
+
+    if (requestToUpdate?.multiDepartment && newStatus === "Completed") {
+      const participantsCompleted = requestToUpdate.participantsCompleted || [];
+      if (participantsCompleted.length < (requestToUpdate.usersNeeded || 2)) {
+        const updatedRequests = requests.map(r => {
+          if (r.id === requestId) {
+            return {
+              ...r,
+              participantsCompleted: [...participantsCompleted, user.username]
+            };
+          }
+          return r;
+        });
+        
+        setRequests(updatedRequests);
+        localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+        
+        toast({
+          title: "Progress saved",
+          description: "Other participants need to mark as completed as well.",
+        });
+        return;
+      }
     }
     
     const updatedRequests = requests.map(r => {
@@ -161,7 +184,7 @@ export const useRequests = () => {
           statusChangedBy: user.username
         };
         
-        if (newStatus === "In Process" && r.type === "request") {
+        if (newStatus === "In Process" && (r.type === "request" || r.multiDepartment)) {
           const currentAcceptedBy = Array.isArray(r.acceptedBy) ? r.acceptedBy : [];
           
           if (!currentAcceptedBy.includes(user.username)) {
