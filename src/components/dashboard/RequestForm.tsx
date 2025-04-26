@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -482,9 +483,9 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         <div className="text-xs text-jd-mutedText mt-2">
           {formData.type === 'request' 
             ? (multiDepartmentRequest 
-               ? 'Note: Multi-department requests expire after 45 days if status remains pending. If rejected, please submit a new request to restart.'
-               : 'Note: Requests expire after 30 days if status remains pending. If rejected, please submit a new request to restart.')
-            : 'Note: Projects are archived after 60 days and deleted after 7 more days if status remains pending.'
+               ? 'Note: Multi-department requests expire after 45 days if status remains pending. If rejected or expired, please submit a new request to restart.'
+               : 'Note: Requests expire after 30 days if status remains pending. If rejected or expired, please submit a new request to restart.')
+            : 'Note: Projects are archived after 60 days and deleted after 7 more days if status remains pending. If rejected or expired, please submit a new request to restart or contact the admin for further queries.'
           }
         </div>
 
