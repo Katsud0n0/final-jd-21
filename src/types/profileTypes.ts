@@ -1,3 +1,4 @@
+
 export interface Request {
   id: string;
   title: string;
@@ -24,6 +25,14 @@ export interface Request {
   statusChangedBy?: string;
   priority?: string;
   relatedProject?: string | null;
+  rejections?: Rejection[];
+  notes?: string;
+}
+
+export interface Rejection {
+  username: string;
+  reason: string;
+  date: string;
 }
 
 export interface UserProfile {

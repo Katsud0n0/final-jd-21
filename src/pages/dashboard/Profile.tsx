@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Archive } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Request } from "@/types/profileTypes";
+import { Request, Rejection } from "@/types/profileTypes";
 
 // Import the refactored components
 import ProfileSidebar from "@/components/profile/ProfileSidebar";
@@ -394,6 +394,29 @@ const Profile = () => {
     });
   };
 
+  // Handle clear rejection notes
+  const handleClearRejectionNotes = () => {
+    if (!user) return;
+    
+    const updatedRequests = requests.map((r: Request) => {
+      if (r.creator === user.username && r.rejections && r.rejections.length > 0) {
+        return {
+          ...r,
+          rejections: []
+        };
+      }
+      return r;
+    });
+    
+    setRequests(updatedRequests);
+    localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+    
+    toast({
+      title: "Rejection notes cleared",
+      description: "All rejection notes have been cleared from your profile.",
+    });
+  };
+
   // Calculate days left before auto-deletion for archived projects
   const getDaysRemaining = (archivedAt: string) => {
     if (!archivedAt) return "Unknown";
@@ -445,7 +468,10 @@ const Profile = () => {
             <ActivitySummary userRequests={userRequests} />
             <RecentActivity recentActivity={recentActivity} />
             {user?.username && (
-              <RejectionNotes userRequests={requests.filter(r => r.creator === user.username)} />
+              <RejectionNotes 
+                userRequests={requests.filter(r => r.creator === user.username)} 
+                onClearNotes={handleClearRejectionNotes}
+              />
             )}
           </TabsContent>
 
