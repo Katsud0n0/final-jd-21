@@ -157,9 +157,9 @@ const AcceptedItems = ({
                     size="sm"
                     variant="outline"
                     className={`border-jd-red text-jd-red hover:bg-jd-red/10 
-                      ${hasMarkedCompleted(item) || item.type === 'project' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      ${hasMarkedCompleted(item) ? 'opacity-50 cursor-not-allowed' : ''}`}
                     onClick={() => initiateAbandon(item.id)}
-                    disabled={hasMarkedCompleted(item) || item.type === 'project'}
+                    disabled={hasMarkedCompleted(item)}
                   >
                     Reject
                   </Button>
@@ -192,7 +192,7 @@ const AcceptedItems = ({
           <AlertDialogHeader>
             <AlertDialogTitle>Reject Request</AlertDialogTitle>
             <p className="text-jd-mutedText">
-              Are you sure you want to reject this request? For multi-department requests or projects, you will be removed from the participants list.
+              Are you sure you want to reject this request? For multi-department requests or projects, you will be removed from the participants list and the status will change to "Pending".
             </p>
           </AlertDialogHeader>
           <AlertDialogFooter>

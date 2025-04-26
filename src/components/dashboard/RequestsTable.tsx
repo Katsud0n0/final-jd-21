@@ -65,6 +65,18 @@ const RequestsTable = ({
   userRole,
   username,
 }: RequestsTableProps) => {
+  
+  // Helper function to get expiration note based on request type
+  const getExpirationNote = (request: Request) => {
+    if (request.type === "project") {
+      return "Projects expire after 60 days if status remains pending. If rejected or expired, please submit a new request to restart or contact the admin for further queries.";
+    } else if (request.multiDepartment) {
+      return "Multi-department requests expire after 45 days if status remains pending. If rejected or expired, please submit a new request to restart.";
+    } else {
+      return "Requests expire after 30 days if status remains pending. If rejected or expired, please submit a new request to restart.";
+    }
+  };
+
   return (
     <div className="bg-jd-card rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
@@ -162,11 +174,9 @@ const RequestsTable = ({
                               )}
                             </div>
                             
-                            {request.type === "request" && (
-                              <div className="mt-2 p-2 bg-red-100 text-red-800 text-xs rounded-md">
-                                If rejected, please submit a new request to restart
-                              </div>
-                            )}
+                            <div className="mt-2 p-2 bg-blue-100 text-blue-800 text-xs rounded-md">
+                              <strong>Expiration Note:</strong> {getExpirationNote(request)}
+                            </div>
                           </div>
                         </DialogContent>
                       </Dialog>

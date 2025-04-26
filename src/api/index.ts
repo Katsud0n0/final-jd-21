@@ -100,6 +100,15 @@ export const api = {
     return handleResponse(response);
   },
   
+  rejectRequest: async (requestId: string, username: string) => {
+    const response = await fetch(`${API_URL}/requests/${requestId}/reject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username })
+    });
+    return handleResponse(response);
+  },
+  
   getUserRequests: async (username: string) => {
     const response = await fetch(`${API_URL}/requests/user/${username}`);
     return handleResponse(response);
