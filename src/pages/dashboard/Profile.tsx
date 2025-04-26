@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -120,20 +121,14 @@ const Profile = () => {
     (user?.role === "admin" ? r.department === user?.department : r.creator === user?.username)
   );
 
-  // Accepted projects and requests - modified for new multi-department behavior
+  // Accepted projects and requests - modified for multi-department behavior
   const acceptedItems = requests.filter((r: Request) => {
     // For multi-department requests, show if user is in acceptedBy array regardless of status
-    if (r.multiDepartment) {
+    if (r.multiDepartment || r.type === "project") {
       return r.acceptedBy && Array.isArray(r.acceptedBy) && r.acceptedBy.includes(user?.username || '');
     }
     
-    // Project type - keep existing behavior
-    if (r.type === "project") {
-      return r.status === "In Process" && r.acceptedBy && Array.isArray(r.acceptedBy) && 
-        r.acceptedBy.includes(user?.username || '');
-    }
-    
-    // Regular request type - keep existing behavior
+    // Regular request type
     if (r.type === "request") {
       if (r.status !== "In Process") return false;
       if (typeof r.acceptedBy === 'string') {
@@ -231,8 +226,8 @@ const Profile = () => {
         ? requestToUpdate.acceptedBy 
         : [];
       
-      // Only mark as completed if all participants have marked as complete
-      const shouldCompleteRequest = participantsCompleted.length >= acceptedUsers.length;
+      // Only mark as completed if all participants have marked as complete AND there are at least 2 users
+      const shouldCompleteRequest = participantsCompleted.length >= acceptedUsers.length && acceptedUsers.length >= 2;
       
       const updatedRequests = requests.map(r => {
         if (r.id === itemId) {
@@ -312,15 +307,21 @@ const Profile = () => {
           // Remove current user
           const newAcceptedBy = currentAcceptedBy.filter(username => username !== user.username);
           // Update users accepted count
-          const newUsersAccepted = (r.usersAccepted || 0) - 1;
+          const newUsersAccepted = Math.max((r.usersAccepted || 0) - 1, 0);
           
           // Always set to Pending when any user rejects for multi-dept or project
           const newStatus = "Pending";
+          
+          // Remove user from participants completed as well
+          const participantsCompleted = Array.isArray(r.participantsCompleted) 
+            ? r.participantsCompleted.filter(username => username !== user.username)
+            : [];
           
           return {
             ...r,
             acceptedBy: newAcceptedBy,
             usersAccepted: newUsersAccepted,
+            participantsCompleted: participantsCompleted,
             status: newStatus,
             lastStatusUpdate: now.toISOString(),
             lastStatusUpdateTime: now.toLocaleTimeString()

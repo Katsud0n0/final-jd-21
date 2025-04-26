@@ -3,23 +3,61 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Request } from "@/types/profileTypes";
-import { Check } from "lucide-react";
-import { api } from "@/api";
+import { useRequestFilters } from "./useRequestFilters";
+import { useRequestDialogs } from "./useRequestDialogs";
+import { useRequestPermissions } from "./useRequestPermissions";
+import { useRequestUtils } from "./useRequestUtils";
 
 export const useRequests = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [requests, setRequests] = useState<Request[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("All");
-  const [departmentFilters, setDepartmentFilters] = useState<string[]>([]);
-  const [requestToDelete, setRequestToDelete] = useState<string | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("all");
-  const [projectToAccept, setProjectToAccept] = useState<string | null>(null);
-  const [acceptDialogOpen, setAcceptDialogOpen] = useState(false);
-  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
+
+  // Import refactored hooks
+  const { 
+    searchTerm, 
+    setSearchTerm, 
+    statusFilter, 
+    setStatusFilter,
+    departmentFilters,
+    toggleDepartmentFilter,
+    activeTab,
+    setActiveTab,
+    clearFilters,
+    filterRequests
+  } = useRequestFilters();
+
+  const {
+    dialogOpen,
+    setDialogOpen,
+    requestToDelete,
+    setRequestToDelete,
+    projectToAccept,
+    setProjectToAccept,
+    acceptDialogOpen,
+    setAcceptDialogOpen,
+    detailsDialogOpen,
+    setDetailsDialogOpen,
+    selectedRequest,
+    setSelectedRequest,
+    openDetailsDialog,
+    handleDelete,
+    handleAcceptProject: initHandleAcceptProject
+  } = useRequestDialogs();
+
+  const {
+    isUserDepartmentIncluded,
+    canAcceptRequest,
+    canAbandonRequest,
+    canDeleteRequest,
+    canEditStatus,
+    canArchiveProject
+  } = useRequestPermissions(user);
+
+  const {
+    renderDepartmentTags: initRenderDepartmentTags,
+    renderAcceptedByDetails
+  } = useRequestUtils();
 
   useEffect(() => {
     loadRequests();
@@ -65,6 +103,7 @@ export const useRequests = () => {
     let updated = false;
     
     const updatedRequests = storedRequests.map((req: Request) => {
+      // Check completed/rejected items for expiry
       if ((req.status === "Completed" || req.status === "Rejected") && req.lastStatusUpdate) {
         const statusUpdateDate = new Date(req.lastStatusUpdate);
         const oneDayLater = new Date(statusUpdateDate);
@@ -76,11 +115,13 @@ export const useRequests = () => {
         }
       } 
       
+      // Remove expired items
       if (req.isExpired) {
         updated = true;
         return null;
       }
       
+      // Skip non-pending items
       if (req.status !== "Pending") return req;
       
       const createdDate = new Date(req.createdAt || req.dateCreated);
@@ -164,7 +205,7 @@ export const useRequests = () => {
         
         // Only change status to Completed if all required participants have completed
         const acceptedBy = Array.isArray(requestToUpdate.acceptedBy) ? requestToUpdate.acceptedBy : [];
-        const shouldCompleteRequest = updatedParticipantsCompleted.length >= acceptedBy.length;
+        const shouldCompleteRequest = updatedParticipantsCompleted.length >= acceptedBy.length && acceptedBy.length >= 2;
         
         const updatedRequests = requests.map(r => {
           if (r.id === requestId) {
@@ -231,10 +272,6 @@ export const useRequests = () => {
       title: "Status updated",
       description: "The request status has been updated successfully.",
     });
-  };
-
-  const handleDelete = (id: string) => {
-    setRequestToDelete(id);
   };
   
   const handleArchive = (id: string) => {
@@ -323,7 +360,7 @@ export const useRequests = () => {
           lastStatusUpdate: now.toISOString(),
           lastStatusUpdateTime: now.toLocaleTimeString(),
           statusChangedBy: user.username,
-          acceptedBy: null, // Clear acceptedBy for rejected single requests
+          acceptedBy: [], // Clear acceptedBy for rejected single requests
           usersAccepted: 0
         };
       }
@@ -368,9 +405,7 @@ export const useRequests = () => {
       }
     }
     
-    setSelectedRequest(request);
-    setProjectToAccept(request.id);
-    setAcceptDialogOpen(true);
+    initHandleAcceptProject(request);
   };
 
   const confirmAcceptProject = () => {
@@ -418,13 +453,13 @@ export const useRequests = () => {
     const updatedUsersAccepted = (project.usersAccepted || 0) + 1;
     
     // Update status to "In Process" if:
-    // 1. It's a multi-department request and has enough users
+    // 1. It's a multi-department request and has 2+ users
     // 2. It's not a multi-department request (single department case)
     const shouldUpdateStatus = 
       (
-        (project.multiDepartment && updatedUsersAccepted >= (project.usersNeeded || 1)) ||
-        !project.multiDepartment
-      );
+        (project.multiDepartment || project.type === "project") && updatedUsersAccepted >= 2
+      ) ||
+      (!project.multiDepartment && project.type !== "project");
     
     const updatedProject = {
       ...project,
@@ -454,266 +489,13 @@ export const useRequests = () => {
     setProjectToAccept(null);
   };
 
-  const isUserDepartmentIncluded = (request: Request): boolean => {
-    if (!user) return false;
-    
-    if (Array.isArray(request.departments)) {
-      return request.departments.includes(user.department);
-    }
-    
-    if (typeof request.department === 'string') {
-      return request.department === user.department;
-    }
-    
-    return false;
-  };
-
-  const canAcceptRequest = (request: Request) => {
-    if (!user || !request || user.role !== "client") return false;
-
-    // Don't allow accepting your own requests
-    if (request.creator === user.username) return false;
-    
-    // Check if request is not archived
-    const notArchived = !request.archived;
-    
-    // Check if the request is for the user's department
-    const isForUserDepartment = isUserDepartmentIncluded(request);
-    
-    // Check if user has already accepted
-    const acceptedBy = Array.isArray(request.acceptedBy) ? [...request.acceptedBy] : 
-                      request.acceptedBy ? [request.acceptedBy as string] : [];
-    const notAlreadyAccepted = !acceptedBy.includes(user.username);
-    
-    // Don't allow accepting completed requests
-    if (request.status === "Completed") {
-      return false;
-    }
-    
-    // Don't allow accepting rejected single requests (not multi-department or project)
-    if (request.status === "Rejected" && !request.multiDepartment && request.type !== "project") {
-      return false;
-    }
-    
-    // For single department requests, don't allow accepting if already accepted by someone
-    if (!request.multiDepartment && request.type !== "project" && acceptedBy.length > 0) {
-      return false;
-    }
-
-    return notArchived && isForUserDepartment && notAlreadyAccepted;
-  };
-
-  const canAbandonRequest = (request: Request) => {
-    if (!user || !request || user.role !== "client") return false;
-
-    // Can't abandon completed requests
-    if (request.status === "Completed") return false;
-
-    if (request.type === "project" && !request.multiDepartment) return false;
-
-    if (request.status !== "Pending" && request.status !== "In Process") return false;
-
-    const acceptedBy = Array.isArray(request.acceptedBy) ? request.acceptedBy : [];
-    
-    return acceptedBy.includes(user.username);
-  };
-
-  const canDeleteRequest = (request: Request) => {
-    if (request.status === "Completed" || request.status === "Rejected") {
-      return false;
-    }
-    
-    if (user?.role === "admin") {
-      return isUserDepartmentIncluded(request);
-    }
-    
-    return user?.username === request.creator;
-  };
-
-  const canEditStatus = (request: Request) => {
-    if (request.status === "Completed" || request.status === "Rejected") {
-      return false;
-    }
-    
-    return user?.role === "admin" && isUserDepartmentIncluded(request);
-  };
-
-  const canArchiveProject = (request: Request) => {
-    return (request.type === "project" || request.multiDepartment) && 
-           user?.role === "admin" && 
-           isUserDepartmentIncluded(request);
-  };
-
-  const openDetailsDialog = (request: Request) => {
-    setSelectedRequest(request);
-    setDetailsDialogOpen(true);
-  };
-
-  const toggleDepartmentFilter = (department: string) => {
-    if (departmentFilters.includes(department)) {
-      setDepartmentFilters(departmentFilters.filter(d => d !== department));
-    } else {
-      setDepartmentFilters([...departmentFilters, department]);
-    }
-  };
-
-  const clearFilters = () => {
-    setStatusFilter("All");
-    setDepartmentFilters([]);
-    setSearchTerm("");
-  };
-
+  // Customize renderDepartmentTags to use the openDetailsDialog from this hook
   const renderDepartmentTags = (request: Request) => {
-    if (request.type === "project") {
-      const depts = Array.isArray(request.departments) ? request.departments : 
-                    request.department ? [request.department] : [];
-      
-      const maxDisplayed = 2;
-      
-      if (depts.length <= maxDisplayed) {
-        return (
-          <div className="flex flex-wrap gap-1">
-            {depts.map((dept, idx) => (
-              <span key={idx} className="bg-jd-bg text-xs px-2 py-1 rounded-full">
-                {dept}
-              </span>
-            ))}
-          </div>
-        );
-      } else {
-        const displayed = depts.slice(0, maxDisplayed);
-        const remaining = depts.length - maxDisplayed;
-        
-        return (
-          <div className="flex flex-wrap gap-1">
-            {displayed.map((dept, idx) => (
-              <span key={idx} className="bg-jd-bg text-xs px-2 py-1 rounded-full">
-                {dept}
-              </span>
-            ))}
-            <span className="bg-jd-purple/20 text-jd-purple text-xs px-2 py-1 rounded-full cursor-pointer" 
-                  onClick={() => openDetailsDialog(request)}>
-              +{remaining} more
-            </span>
-          </div>
-        );
-      }
-    }
-    
-    const depts = request.departments || [request.department as string];
-    const maxDisplayed = 2;
-    
-    if (!Array.isArray(depts) || depts.length <= maxDisplayed) {
-      return (
-        <div className="flex flex-wrap gap-1">
-          {Array.isArray(depts) ? depts.map((dept, idx) => (
-            <span key={idx} className="bg-jd-bg text-xs px-2 py-1 rounded-full">
-              {dept}
-            </span>
-          )) : (
-            <span className="bg-jd-bg text-xs px-2 py-1 rounded-full">
-              {depts}
-            </span>
-          )}
-        </div>
-      );
-    } else {
-      const displayed = depts.slice(0, maxDisplayed);
-      const remaining = depts.length - maxDisplayed;
-      
-      return (
-        <div className="flex flex-wrap gap-1">
-          {displayed.map((dept, idx) => (
-            <span key={idx} className="bg-jd-bg text-xs px-2 py-1 rounded-full">
-              {dept}
-            </span>
-          ))}
-          <span className="bg-jd-purple/20 text-jd-purple text-xs px-2 py-1 rounded-full cursor-pointer" 
-                onClick={() => openDetailsDialog(request)}>
-            +{remaining} more
-          </span>
-        </div>
-      );
-    }
+    return initRenderDepartmentTags(request, openDetailsDialog);
   };
 
-  const renderAcceptedByDetails = (request: Request) => {
-    if (!request.acceptedBy || (Array.isArray(request.acceptedBy) && request.acceptedBy.length === 0)) {
-      return "None";
-    }
-    
-    // For multi-department requests and projects, show all accepted users
-    if (request.multiDepartment || request.type === "project") {
-      if (Array.isArray(request.acceptedBy)) {
-        return (
-          <div className="space-y-1 mt-1">
-            {request.acceptedBy.map((username, idx) => (
-              <div key={idx} className="flex items-center gap-1">
-                <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
-                  {username}
-                </span>
-                {request.participantsCompleted?.includes(username) && (
-                  <Check size={12} className="text-green-500" />
-                )}
-              </div>
-            ))}
-            {request.usersNeeded && request.acceptedBy.length < request.usersNeeded && (
-              <div className="text-xs text-jd-mutedText mt-1">
-                Waiting for {request.usersNeeded - request.acceptedBy.length} more participants
-              </div>
-            )}
-          </div>
-        );
-      }
-    }
-    
-    // For single requests, only show the first user who accepted
-    if (!request.multiDepartment && request.type !== "project") {
-      const acceptedUser = Array.isArray(request.acceptedBy) ? request.acceptedBy[0] : request.acceptedBy;
-      if (acceptedUser) {
-        return (
-          <div className="space-y-1 mt-1">
-            <div className="flex items-center gap-1">
-              <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
-                {acceptedUser}
-              </span>
-            </div>
-          </div>
-        );
-      }
-    }
-    
-    return "None";
-  };
-
-  const filteredRequests = requests.filter(request => {
-    const matchesSearch = request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         request.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (typeof request.department === 'string' && request.department.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                         (request.creator && request.creator.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesStatus = statusFilter === "All" || request.status === statusFilter;
-    
-    let matchesDepartment = true;
-    if (departmentFilters.length > 0) {
-      if (Array.isArray(request.departments)) {
-        matchesDepartment = request.departments.some(dept => 
-          departmentFilters.includes(dept)
-        );
-      } else {
-        matchesDepartment = departmentFilters.includes(request.department as string);
-      }
-    }
-    
-    const matchesType = 
-      activeTab === "all" || 
-      (activeTab === "requests" && request.type === "request") || 
-      (activeTab === "projects" && request.type === "project");
-    
-    const isNotArchived = !request.archived;
-    
-    return matchesSearch && matchesStatus && matchesDepartment && matchesType && isNotArchived;
-  });
+  // Filter requests based on current filters
+  const filteredRequests = filterRequests(requests);
 
   return {
     requests: filteredRequests,

@@ -12,7 +12,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
 interface AcceptedItemsProps {
@@ -100,6 +99,12 @@ const AcceptedItems = ({
                         item.multiDepartment ? "Multi-Dept" : 
                         "Request"}
                     </span>
+                    <span className={`inline-flex items-center px-2 py-1 rounded text-xs
+                      ${item.status === "In Process" ? "bg-yellow-500/20 text-yellow-500" : 
+                        item.status === "Completed" ? "bg-green-500/20 text-green-500" : 
+                        "bg-blue-500/20 text-blue-500"}`}>
+                      {item.status}
+                    </span>
                   </div>
                   <p className="text-sm text-jd-purple">{item.department}</p>
                   <p className="text-sm text-jd-mutedText mt-1">
@@ -121,6 +126,12 @@ const AcceptedItems = ({
                           </div>
                         ))}
                       </div>
+                      
+                      {item.acceptedBy.length < 2 && (
+                        <p className="text-xs text-amber-600 mt-1">
+                          Waiting for more users to join before changing to In Process
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -146,9 +157,9 @@ const AcceptedItems = ({
                     size="sm"
                     variant="outline"
                     className={`border-jd-red text-jd-red hover:bg-jd-red/10 
-                      ${hasMarkedCompleted(item) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      ${hasMarkedCompleted(item) || item.type === 'project' ? 'opacity-50 cursor-not-allowed' : ''}`}
                     onClick={() => initiateAbandon(item.id)}
-                    disabled={hasMarkedCompleted(item)}
+                    disabled={hasMarkedCompleted(item) || item.type === 'project'}
                   >
                     Reject
                   </Button>
