@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -104,10 +103,12 @@ const Profile = () => {
     }
   };
 
-  // Filter requests for current user - For projects, show all items user has accepted
+  // Filter requests for current user - Modified to include requests where user has accepted
   const userRequests = requests.filter((r: Request) =>
     // Show all requests created by the user
     r.creator === user?.username ||
+    // Show all multi-department requests where user has accepted
+    (r.multiDepartment && r.acceptedBy && Array.isArray(r.acceptedBy) && r.acceptedBy.includes(user?.username)) ||
     // Or if user is part of a project via the acceptedBy array
     (r.type === "project" && r.acceptedBy && Array.isArray(r.acceptedBy) && r.acceptedBy.includes(user?.username))
   );
@@ -119,24 +120,25 @@ const Profile = () => {
     (user?.role === "admin" ? r.department === user?.department : r.creator === user?.username)
   );
 
-  // Accepted projects and requests - both as creator and as acceptedBy
+  // Accepted projects and requests - modified for new multi-department behavior
   const acceptedItems = requests.filter((r: Request) => {
-    // In Process status is required for all
-    if (r.status !== "In Process") return false;
-    
-    // Project type
-    if (r.type === "project") {
-      // Check if user is in acceptedBy array
+    // For multi-department requests, show if user is in acceptedBy array regardless of status
+    if (r.multiDepartment) {
       return r.acceptedBy && Array.isArray(r.acceptedBy) && r.acceptedBy.includes(user?.username || '');
     }
     
-    // Request type
+    // Project type - keep existing behavior
+    if (r.type === "project") {
+      return r.status === "In Process" && r.acceptedBy && Array.isArray(r.acceptedBy) && 
+        r.acceptedBy.includes(user?.username || '');
+    }
+    
+    // Regular request type - keep existing behavior
     if (r.type === "request") {
-      // Check if user is the acceptedBy (string) or in acceptedBy array
+      if (r.status !== "In Process") return false;
       if (typeof r.acceptedBy === 'string') {
         return r.acceptedBy === user?.username;
       }
-      
       if (Array.isArray(r.acceptedBy)) {
         return r.acceptedBy.includes(user?.username || '');
       }

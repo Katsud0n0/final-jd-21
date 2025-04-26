@@ -1,4 +1,3 @@
-
 # JD Frameworks – Project Dashboard Platform
 
 ## 📚 Project Overview
@@ -51,10 +50,13 @@
   - Expire after 30 days if not accepted
 
 - **Multi-Department Requests:**
-  - Can be accepted by multiple users from specified departments
-  - If any user rejects/abandons the request, their username is removed from participants and request returns to "Pending" status
+  - Users can accept and view the request in their profile immediately after accepting
+  - Can start working on the request (mark complete/reject) even if minimum users haven't joined yet
+  - Status only changes to "In Process" when minimum required users have accepted
   - Each participant must mark the request as "Completed" from their profile
   - Request is only marked as "Completed" when all participants have completed it
+  - If any user rejects/abandons the request, their username is removed from participants
+  - Request returns to "Pending" status when rejected by any user
   - Expire after 45 days if not accepted
   - When creating, displays note about 45-day expiry
 
