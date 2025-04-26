@@ -1,4 +1,3 @@
-
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -95,7 +94,6 @@ const Requests = () => {
         canDeleteRequest={canDeleteRequest}
         canArchiveProject={canArchiveProject}
         canAcceptRequest={canAcceptRequest}
-        canAbandonRequest={canAbandonRequest}
         handleStatusChange={handleStatusChange}
         handleDelete={handleDelete}
         handleArchive={handleArchive}
@@ -107,7 +105,6 @@ const Requests = () => {
         username={user?.username}
       />
       
-      {/* Clear all requests button - at the bottom right */}
       {user?.role === "admin" && clearAllRequests && (
         <div className="flex justify-end mt-6">
           <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
@@ -171,43 +168,28 @@ const Requests = () => {
           {selectedRequest && (
             <div className="space-y-4 mt-2">
               <div>
-                <h4 className="text-sm font-medium mb-2">Required Departments:</h4>
-                <div className="flex flex-wrap gap-1">
+                <h4 className="text-sm font-medium mb-1">Required Departments:</h4>
+                <p className="text-jd-mutedText text-sm">
                   {Array.isArray(selectedRequest.departments) 
-                    ? selectedRequest.departments.map(dept => (
-                      <span key={dept} className="bg-jd-bg text-xs px-2 py-1 rounded-full">
-                        {dept}
-                      </span>
-                    ))
-                    : (
-                      <span className="bg-jd-bg text-xs px-2 py-1 rounded-full">
-                        {selectedRequest.department}
-                      </span>
-                    )}
-                </div>
+                    ? selectedRequest.departments.join(", ") 
+                    : selectedRequest.department}
+                </p>
               </div>
-              
+              {selectedRequest.creatorDepartment && (
+                <div>
+                  <h4 className="text-sm font-medium mb-1">Creator Department:</h4>
+                  <p className="text-jd-mutedText text-sm">{selectedRequest.creatorDepartment}</p>
+                </div>
+              )}
               <div>
-                <h4 className="text-sm font-medium mb-2">Description:</h4>
+                <h4 className="text-sm font-medium mb-1">Description:</h4>
                 <p className="text-jd-mutedText text-sm">{selectedRequest.description}</p>
               </div>
               
               <div>
-                <h4 className="text-sm font-medium mb-2">Created by:</h4>
-                <p className="text-jd-mutedText text-sm">
-                  {selectedRequest.creator}
-                  {selectedRequest.creatorDepartment && (
-                    <span className="italic"> ({selectedRequest.creatorDepartment})</span>
-                  )}
-                </p>
+                <h4 className="text-sm font-medium mb-1">Accepted By:</h4>
+                {renderAcceptedByDetails(selectedRequest)}
               </div>
-              
-              {(selectedRequest.type === "project" || selectedRequest.multiDepartment) && (
-                <div>
-                  <h4 className="text-sm font-medium mb-2">Participants:</h4>
-                  {renderAcceptedByDetails(selectedRequest)}
-                </div>
-              )}
             </div>
           )}
         </DialogContent>

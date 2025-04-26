@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -39,11 +40,13 @@ export const useRequests = () => {
     const storedRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
     
     const filteredRequests = storedRequests.filter((req: Request) => {
+      // Check if the department is completely different than the admin's department
       if (Array.isArray(req.departments)) {
         return !req.departments.includes(user.department);
-      } else {
+      } else if (typeof req.department === 'string') {
         return req.department !== user.department;
       }
+      return true; // Keep items without department info
     });
     
     localStorage.setItem("jd-requests", JSON.stringify(filteredRequests));
@@ -252,12 +255,21 @@ export const useRequests = () => {
       
       currentAcceptedBy.splice(userIndex, 1);
       
+      // Remove user from participantsCompleted if they exist there
+      const participantsCompleted = request.participantsCompleted ? 
+        request.participantsCompleted.filter(username => username !== user.username) : 
+        [];
+      
       const updatedRequests = requests.map(r => {
         if (r.id === id) {
           return {
             ...r,
             acceptedBy: currentAcceptedBy,
-            usersAccepted: (r.usersAccepted || 0) - 1
+            usersAccepted: (r.usersAccepted || 0) - 1,
+            participantsCompleted: participantsCompleted,
+            // Don't set status to Rejected for multi-department requests
+            // so others can still accept it
+            status: r.status, 
           };
         }
         return r;
@@ -409,7 +421,8 @@ export const useRequests = () => {
     if (!basicConditions) return false;
     
     // Check if user has already accepted this request or project
-    const acceptedBy = Array.isArray(request.acceptedBy) ? request.acceptedBy : [];
+    const acceptedBy = Array.isArray(request.acceptedBy) ? request.acceptedBy : 
+                       request.acceptedBy ? [request.acceptedBy] : [];
     
     // Make sure user hasn't already accepted this request/project
     return !acceptedBy.includes(user.username);
@@ -487,7 +500,11 @@ export const useRequests = () => {
             <span key={dept} className="bg-jd-bg text-xs px-2 py-1 rounded-full">
               {dept}
             </span>
-          )) : depts}
+          )) : (
+            <span className="bg-jd-bg text-xs px-2 py-1 rounded-full">
+              {depts}
+            </span>
+          )}
         </div>
       );
     } else {

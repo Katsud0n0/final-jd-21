@@ -254,7 +254,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
                   htmlFor="multi-department"
                   className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                 >
-                  Requests that requires multiple departments (1-2)
+                  Request that requires multiple departments (1-2)
                 </label>
               </div>
             </div>

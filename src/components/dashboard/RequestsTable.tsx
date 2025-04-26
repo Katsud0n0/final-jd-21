@@ -122,22 +122,29 @@ const RequestsTable = ({
                               <h4 className="text-sm font-medium mb-1">Description:</h4>
                               <p className="text-jd-mutedText text-sm">{request.description}</p>
                             </div>
-                            {(request.type === "project" || request.multiDepartment) && (
-                              <div>
-                                <h4 className="text-sm font-medium mb-1">Accepted By:</h4>
-                                {Array.isArray(request.acceptedBy) && request.acceptedBy.length > 0 ? (
-                                  <div className="flex flex-wrap gap-1">
-                                    {request.acceptedBy.map((user, idx) => (
+                            
+                            <div>
+                              <h4 className="text-sm font-medium mb-1">Accepted By:</h4>
+                              {(request.acceptedBy && (
+                                Array.isArray(request.acceptedBy) ? request.acceptedBy.length > 0 : request.acceptedBy
+                              )) ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {Array.isArray(request.acceptedBy) ? (
+                                    request.acceptedBy.map((user, idx) => (
                                       <span key={idx} className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
                                         {user}
                                       </span>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <p className="text-jd-mutedText text-sm">None yet</p>
-                                )}
-                              </div>
-                            )}
+                                    ))
+                                  ) : (
+                                    <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
+                                      {request.acceptedBy}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="text-jd-mutedText text-sm">None yet</p>
+                              )}
+                            </div>
                           </div>
                         </DialogContent>
                       </Dialog>
