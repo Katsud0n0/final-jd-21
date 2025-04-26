@@ -260,7 +260,7 @@ const RequestsTable = ({
                         <Button 
                           size="sm"
                           variant="outline"
-                          className="w-full mt-1"
+                          className="w-full mt-1 bg-jd-green/10 text-jd-green hover:bg-jd-green/20 border-jd-green/20"
                           onClick={() => handleAcceptProject(request)}
                         >
                           <Check size={14} className="mr-1" />

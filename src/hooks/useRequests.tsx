@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -299,23 +298,27 @@ export const useRequests = () => {
 
     // For client users, allow accepting requests that are pending and not archived
     // Users shouldn't be able to accept their own requests
-    const basicConditions = user.role === "client" && 
-                           request.status === "Pending" && 
-                           !request.archived;
+    const isClient = user.role === "client";
+    const isPending = request.status === "Pending";
+    const notArchived = !request.archived;
+    const isNotCreator = request.creator !== user.username;
+    
+    // Make sure the request is for the user's department
+    const isForUserDepartment = isUserDepartmentIncluded(request);
+    
+    // Basic conditions that apply to both projects and requests
+    const basicConditions = isClient && isPending && notArchived && isNotCreator && isForUserDepartment;
     
     if (!basicConditions) return false;
     
-    // Make sure the request is for the user's department
-    if (!isUserDepartmentIncluded(request)) {
-      return false;
-    }
-    
     if (request.type === "project") {
       const acceptedBy = Array.isArray(request.acceptedBy) ? request.acceptedBy : [];
-      return request.creator !== user.username && !acceptedBy.includes(user.username);
+      // Make sure user hasn't already accepted this project
+      return !acceptedBy.includes(user.username);
     }
     
-    return request.creator !== user.username;
+    // For regular requests
+    return true;
   };
 
   const canDeleteRequest = (request: Request) => {
