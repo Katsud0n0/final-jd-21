@@ -431,7 +431,7 @@ export const useRequests = () => {
     return false;
   };
 
-  // Updated to prevent accepting single requests that are rejected
+  // Updated to prevent accepting single requests that are rejected or completed
   const canAcceptRequest = (request: Request) => {
     if (!user || !request || user.role !== "client") return false;
 
@@ -449,9 +449,9 @@ export const useRequests = () => {
                       request.acceptedBy ? [request.acceptedBy as string] : [];
     const notAlreadyAccepted = !acceptedBy.includes(user.username);
 
-    // Don't allow accepting rejected single requests 
-    // Only allow accepting multi-department and project requests even after rejection
-    if (request.status === "Rejected" && !request.multiDepartment && request.type !== "project") {
+    // Don't allow accepting rejected single requests or completed requests
+    if ((request.status === "Rejected" && !request.multiDepartment && request.type !== "project") || 
+        (request.status === "Completed")) {
       return false;
     }
 
@@ -594,28 +594,49 @@ export const useRequests = () => {
       return "None";
     }
     
-    if (Array.isArray(request.acceptedBy)) {      
-      return (
-        <div className="space-y-1 mt-1">
-          {request.acceptedBy.map((username, idx) => (
-            <div key={idx} className="flex items-center gap-1">
+    if (Array.isArray(request.acceptedBy)) {
+      // For multi-department requests and projects, show all accepted users
+      if (request.multiDepartment || request.type === "project") {      
+        return (
+          <div className="space-y-1 mt-1">
+            {request.acceptedBy.map((username, idx) => (
+              <div key={idx} className="flex items-center gap-1">
+                <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
+                  {username}
+                </span>
+                {request.participantsCompleted?.includes(username) && (
+                  <Check size={12} className="text-green-500" />
+                )}
+              </div>
+            ))}
+            {request.usersNeeded && request.acceptedBy.length < request.usersNeeded && (
+              <div className="text-xs text-jd-mutedText mt-1">
+                Waiting for {request.usersNeeded - request.acceptedBy.length} more participants
+              </div>
+            )}
+          </div>
+        );
+      } 
+      // For single requests, only show current user if they accepted
+      else if (user && request.acceptedBy.includes(user.username)) {
+        return (
+          <div className="space-y-1 mt-1">
+            <div className="flex items-center gap-1">
               <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
-                {username}
+                {user.username}
               </span>
-              {request.participantsCompleted?.includes(username) && (
+              {request.participantsCompleted?.includes(user.username) && (
                 <Check size={12} className="text-green-500" />
               )}
             </div>
-          ))}
-          {request.usersNeeded && request.acceptedBy.length < request.usersNeeded && (
-            <div className="text-xs text-jd-mutedText mt-1">
-              Waiting for {request.usersNeeded - request.acceptedBy.length} more participants
-            </div>
-          )}
-        </div>
-      );
+          </div>
+        );
+      }
+      
+      return "None";
     }
     
+    // For string acceptedBy value
     return typeof request.acceptedBy === 'string' ? request.acceptedBy : 'None';
   };
 

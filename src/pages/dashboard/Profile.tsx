@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -201,7 +200,7 @@ const Profile = () => {
     const now = new Date();
     const updatedRequests = requests.map((r: Request) => {
       if (r.id === itemId) {
-        if (r.type === "project") {
+        if (r.type === "project" || r.multiDepartment) {
           const participantsCompleted = Array.isArray(r.participantsCompleted)
             ? [...r.participantsCompleted]
             : [];
@@ -235,10 +234,23 @@ const Profile = () => {
     });
     setRequests(updatedRequests);
     localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
-    toast({
-      title: "Marked as Completed",
-      description: "The item has been marked as completed successfully.",
-    });
+    
+    // Update toast message based on whether it's a project/multi-dept or a regular request
+    const completedItem = updatedRequests.find(r => r.id === itemId);
+    if (completedItem && (completedItem.type === "project" || completedItem.multiDepartment)) {
+      const isFullyCompleted = completedItem.status === "Completed";
+      toast({
+        title: isFullyCompleted ? "Request Completed" : "Progress Saved",
+        description: isFullyCompleted 
+          ? "All participants have marked this as complete."
+          : "Your completion has been recorded. Waiting for others to complete.",
+      });
+    } else {
+      toast({
+        title: "Marked as Completed",
+        description: "The item has been marked as completed successfully.",
+      });
+    }
   };
 
   // Reject button (previously Abandon)

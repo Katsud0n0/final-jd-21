@@ -1,4 +1,3 @@
-
 import { Trash2, Archive, Check, Clock, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -131,16 +130,28 @@ const RequestsTable = ({
                               )) ? (
                                 <div className="flex flex-wrap gap-1">
                                   {Array.isArray(request.acceptedBy) ? (
-                                    request.acceptedBy.map((user, idx) => (
-                                      <div key={idx} className="flex items-center gap-1">
-                                        <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
-                                          {user}
-                                        </span>
-                                        {request.participantsCompleted?.includes(user) && (
-                                          <Check size={12} className="text-green-500" />
-                                        )}
-                                      </div>
-                                    ))
+                                    (request.multiDepartment || request.type === "project") ? (
+                                      // For multi-dept and projects, show current acceptedBy list
+                                      request.acceptedBy.map((user, idx) => (
+                                        <div key={idx} className="flex items-center gap-1">
+                                          <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
+                                            {user}
+                                          </span>
+                                          {request.participantsCompleted?.includes(user) && (
+                                            <Check size={12} className="text-green-500" />
+                                          )}
+                                        </div>
+                                      ))
+                                    ) : (
+                                      // For single requests, show only current username if accepted
+                                      username && request.acceptedBy.includes(username) ? (
+                                        <div className="flex items-center gap-1">
+                                          <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
+                                            {username}
+                                          </span>
+                                        </div>
+                                      ) : <p className="text-jd-mutedText text-sm">None yet</p>
+                                    )
                                   ) : (
                                     <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
                                       {request.acceptedBy}
@@ -325,7 +336,8 @@ const RequestsTable = ({
                               ) : (
                                 <span className="text-jd-mutedText">
                                   {request.creator === username ? "Can't accept" : 
-                                   (request.status === "Rejected" && !request.multiDepartment && request.type !== "project") ? 
+                                   (request.status === "Rejected" && !request.multiDepartment && request.type !== "project") || 
+                                   (request.status === "Completed") ? 
                                    "Can't accept" : "Not for your department"}
                                 </span>
                               )}
