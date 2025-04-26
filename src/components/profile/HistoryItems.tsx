@@ -23,6 +23,22 @@ interface HistoryItemsProps {
 const HistoryItems = ({ historyItems, handleClearHistory }: HistoryItemsProps) => {
   const [showClearHistoryDialog, setShowClearHistoryDialog] = useState(false);
 
+  const renderStatusDetails = (item: Request) => {
+    if (!item.lastStatusUpdate) return null;
+    
+    return (
+      <div className="text-xs text-jd-mutedText mt-1">
+        {item.statusChangedBy && item.statusChangedBy !== item.creator ? (
+          <span className="font-medium">
+            Status changed by admin: {item.statusChangedBy}
+          </span>
+        ) : (
+          <span>Status updated</span>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="bg-jd-card rounded-lg p-6">
       <div className="flex justify-between items-center mb-6">
@@ -83,7 +99,7 @@ const HistoryItems = ({ historyItems, handleClearHistory }: HistoryItemsProps) =
                   <div className="mt-2 flex items-center">
                     <span className={`px-2 py-1 rounded text-xs ${
                       item.status === "Completed" ? "bg-green-500/20 text-green-500" :
-                      "bg-red-500/20 text-red-500"
+                      "bg-gray-500/20 text-gray-500"
                     }`}>
                       {item.status}
                     </span>
@@ -95,6 +111,7 @@ const HistoryItems = ({ historyItems, handleClearHistory }: HistoryItemsProps) =
                         </span>
                       </div>
                     )}
+                    {renderStatusDetails(item)}
                     {item.isExpired && (
                       <span className="ml-4 text-xs text-red-500">
                         Expired - Will be deleted soon

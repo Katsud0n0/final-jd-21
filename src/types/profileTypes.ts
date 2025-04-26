@@ -22,6 +22,7 @@ export interface Request {
   usersAccepted?: number;
   participantsCompleted?: string[];
   multiDepartment?: boolean;
+  statusChangedBy?: string; // Track who changed the status
 }
 
 export interface UserProfile {

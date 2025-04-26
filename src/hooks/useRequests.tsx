@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -159,6 +158,7 @@ export const useRequests = () => {
           status: newStatus, 
           lastStatusUpdate: now.toISOString(),
           lastStatusUpdateTime: now.toLocaleTimeString(),
+          statusChangedBy: user.username
         };
         
         if (newStatus === "In Process" && r.type === "request") {
@@ -319,7 +319,7 @@ export const useRequests = () => {
     localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
     
     toast({
-      title: project.type === "project" ? "Project accepted" : "Request accepted",
+      title: "Accepted",
       description: shouldUpdateStatus 
         ? `You've accepted the ${project.type}. It has now moved to In Process status.` 
         : `You've accepted the ${project.type}. It needs more users before it can start.`,
@@ -370,8 +370,8 @@ export const useRequests = () => {
   const canAbandonRequest = (request: Request) => {
     if (!user || !request || user.role !== "client") return false;
 
-    // Users can abandon multi-department requests/projects they've accepted
-    if (!request.multiDepartment && request.type !== "project") return false;
+    // Allow abandoning all types of requests and multi-department projects
+    if (request.type === "project" && !request.multiDepartment) return false;
 
     // Can't abandon if status not pending or in process
     if (request.status !== "Pending" && request.status !== "In Process") return false;

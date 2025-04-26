@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/use-toast";
 
 interface AcceptedItemsProps {
   acceptedItems: Request[];
@@ -21,6 +22,16 @@ interface AcceptedItemsProps {
 }
 
 const AcceptedItems = ({ acceptedItems, handleMarkCompleted, handleAbandon, hasMarkedCompleted, user }: AcceptedItemsProps) => {
+  const { toast } = useToast();
+  
+  const onAbandon = (itemId: string) => {
+    handleAbandon(itemId);
+    toast({
+      title: "Request abandoned",
+      description: "You have successfully abandoned the request.",
+    });
+  };
+
   const renderDepartments = (item: Request) => {
     if (item.departments && Array.isArray(item.departments)) {
       const maxDisplayed = 2; // Show at most 2 departments, then show "+X more"
@@ -161,13 +172,13 @@ const AcceptedItems = ({ acceptedItems, handleMarkCompleted, handleAbandon, hasM
                     {hasMarkedCompleted(item) ? "Completed (Waiting for others)" : "Mark Completed"}
                   </Button>
                   
-                  {/* Show Abandon button only for requests, not for projects */}
-                  {item.type !== "project" && (
+                  {/* Show Abandon button for projects and multi-department requests, or single department requests */}
+                  {(item.multiDepartment || (item.type === "request" && !item.multiDepartment)) && (
                     <Button 
                       size="sm" 
                       variant="destructive"
                       className="flex items-center gap-1"
-                      onClick={() => handleAbandon(item.id)}
+                      onClick={() => onAbandon(item.id)}
                     >
                       <X size={16} />
                       Abandon

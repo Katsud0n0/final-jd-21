@@ -305,7 +305,7 @@ const RequestsTable = ({
                               request.acceptedBy.includes(username) ? (
                                 <span className="text-jd-green font-medium">Accepted</span>
                               ) : (
-                                "Not for your department"
+                                <span className="text-jd-mutedText">Not for your department</span>
                               )}
                             </div>
                           )}

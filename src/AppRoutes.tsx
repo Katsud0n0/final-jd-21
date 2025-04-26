@@ -31,16 +31,13 @@ const AppRoutes = () => {
       
       {/* Dashboard Routes */}
       <Route element={<DashboardLayout />}>
-        <Route path="/dashboard" element={<Navigate to="/home" replace />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/departments" element={<Departments />} />
         <Route path="/requests" element={<Requests />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/team" element={<Team />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/home" element={<Home />} />
-        
-        {/* Redirect dashboard root path to /home as default */}
-        <Route path="/" element={<Navigate to="/home" replace />} />
       </Route>
       
       {/* 404 Route */}
