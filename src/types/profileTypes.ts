@@ -21,6 +21,7 @@ export interface Request {
   usersNeeded?: number;
   usersAccepted?: number;
   participantsCompleted?: string[];
+  multiDepartment?: boolean;
 }
 
 export interface UserProfile {
