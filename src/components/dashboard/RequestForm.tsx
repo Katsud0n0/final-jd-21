@@ -206,7 +206,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         title: `${formData.type === 'project' ? 'Project' : 'Request'} created`,
         description: `Your ${formData.type} has been successfully created with a pending status. ${
           formData.type === 'request' 
-            ? 'Requests expire after 30 days if not approved.' 
+            ? 'Requests expire after 30 days if not approved. If rejected, please submit a new request to restart.'
             : 'Projects expire after 60 days if not approved.'
         }`,
       });
@@ -474,7 +474,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
 
         <div className="text-xs text-jd-mutedText mt-2">
           {formData.type === 'request' 
-            ? 'Note: Requests expire after 30 days if status remains pending.'
+            ? 'Note: Requests expire after 30 days if status remains pending. If rejected, please submit a new request to restart.'
             : 'Note: Projects are archived after 60 days and deleted after 7 more days if status remains pending.'
           }
         </div>

@@ -249,16 +249,40 @@ const Profile = () => {
   // Abandon button should be disabled for projects
   const handleAbandon = (itemId: string) => {
     const item = requests.find((r: Request) => r.id === itemId);
-    if (item && item.type === "project") {
+    
+    const now = new Date();
+    
+    // For multi-department requests, only remove this user
+    if (item && (item.multiDepartment || item.type === "project")) {
+      const updatedRequests = requests.map((r: Request) => {
+        if (r.id === itemId) {
+          // Get current acceptedBy list
+          const currentAcceptedBy = Array.isArray(r.acceptedBy) ? [...r.acceptedBy] : [];
+          // Remove current user
+          const newAcceptedBy = currentAcceptedBy.filter(username => username !== user?.username);
+          // Update users accepted count
+          const newUsersAccepted = (r.usersAccepted || 0) - 1;
+          
+          return {
+            ...r,
+            acceptedBy: newAcceptedBy,
+            usersAccepted: newUsersAccepted
+          };
+        }
+        return r;
+      });
+      
+      setRequests(updatedRequests);
+      localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+      
       toast({
-        title: "Cannot abandon project",
-        description: "Projects cannot be abandoned once accepted.",
-        variant: "destructive"
+        title: "Request rejected",
+        description: "You have been removed from the participants list.",
       });
       return;
     }
     
-    const now = new Date();
+    // For regular requests, mark as rejected
     const updatedRequests = requests.map((r: Request) => 
       r.id === itemId ? { 
         ...r, 
@@ -267,12 +291,13 @@ const Profile = () => {
         lastStatusUpdateTime: now.toLocaleTimeString()
       } : r
     );
+    
     setRequests(updatedRequests);
     localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
     
     toast({
-      title: "Request Abandoned",
-      description: "The item has been abandoned and marked as rejected.",
+      title: "Request Rejected",
+      description: "The item has been rejected and marked as such.",
     });
   };
 

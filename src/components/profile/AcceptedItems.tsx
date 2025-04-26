@@ -27,8 +27,8 @@ const AcceptedItems = ({ acceptedItems, handleMarkCompleted, handleAbandon, hasM
   const onAbandon = (itemId: string) => {
     handleAbandon(itemId);
     toast({
-      title: "Request abandoned",
-      description: "You have successfully abandoned the request.",
+      title: "Request rejected",
+      description: "You have successfully rejected the request.",
     });
   };
 
@@ -172,7 +172,7 @@ const AcceptedItems = ({ acceptedItems, handleMarkCompleted, handleAbandon, hasM
                     {hasMarkedCompleted(item) ? "Completed (Waiting for others)" : "Mark Completed"}
                   </Button>
                   
-                  {/* Show Abandon button for projects and multi-department requests, or single department requests */}
+                  {/* Show Reject button for projects and multi-department requests, or single department requests */}
                   {(item.multiDepartment || (item.type === "request" && !item.multiDepartment)) && (
                     <Button 
                       size="sm" 
@@ -181,7 +181,7 @@ const AcceptedItems = ({ acceptedItems, handleMarkCompleted, handleAbandon, hasM
                       onClick={() => onAbandon(item.id)}
                     >
                       <X size={16} />
-                      Abandon
+                      Reject
                     </Button>
                   )}
                 </div>

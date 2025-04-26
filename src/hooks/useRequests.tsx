@@ -231,32 +231,57 @@ export const useRequests = () => {
     if (!request) {
       toast({
         title: "Request not found",
-        description: "The request you're trying to abandon could not be found.",
+        description: "The request you're trying to reject could not be found.",
         variant: "destructive"
       });
       return;
     }
     
-    const currentAcceptedBy = Array.isArray(request.acceptedBy) ? [...request.acceptedBy] : [];
-    const userIndex = currentAcceptedBy.indexOf(user.username);
-    
-    if (userIndex === -1) {
+    if (request.multiDepartment || request.type === "project") {
+      const currentAcceptedBy = Array.isArray(request.acceptedBy) ? [...request.acceptedBy] : [];
+      const userIndex = currentAcceptedBy.indexOf(user.username);
+      
+      if (userIndex === -1) {
+        toast({
+          title: "Not participating",
+          description: "You are not participating in this request.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      currentAcceptedBy.splice(userIndex, 1);
+      
+      const updatedRequests = requests.map(r => {
+        if (r.id === id) {
+          return {
+            ...r,
+            acceptedBy: currentAcceptedBy,
+            usersAccepted: (r.usersAccepted || 0) - 1
+          };
+        }
+        return r;
+      });
+      
+      setRequests(updatedRequests);
+      localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+      
       toast({
-        title: "Not participating",
-        description: "You are not participating in this request.",
-        variant: "destructive"
+        title: "Request rejected",
+        description: "You have been removed from the participants list.",
       });
       return;
     }
     
-    currentAcceptedBy.splice(userIndex, 1);
-    
+    const now = new Date();
     const updatedRequests = requests.map(r => {
       if (r.id === id) {
         return {
           ...r,
-          acceptedBy: currentAcceptedBy,
-          usersAccepted: (r.usersAccepted || 0) - 1
+          status: "Rejected",
+          lastStatusUpdate: now.toISOString(),
+          lastStatusUpdateTime: now.toLocaleTimeString(),
+          statusChangedBy: user.username
         };
       }
       return r;
@@ -266,8 +291,8 @@ export const useRequests = () => {
     localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
     
     toast({
-      title: "Request abandoned",
-      description: "You have successfully abandoned the request.",
+      title: "Request rejected",
+      description: "You have successfully rejected the request.",
     });
   };
 
