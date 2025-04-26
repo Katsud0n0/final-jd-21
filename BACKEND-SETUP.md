@@ -13,6 +13,7 @@
      - When rejected, status changes back to "Pending" from "In Process"
      - When rejected, rejection reason is stored and sent to creator
      - Rejection notes are displayed in the user's profile and can be cleared individually or all at once
+     - When rejecting a single request, users are prompted to provide an optional reason for the rejection
 
 2. **Multi-Department Requests**
    - Expiration: 45 days
@@ -34,6 +35,7 @@
      - Projects follow the same participant logic as multi-department requests
      - Project stays in "Pending" until at least 2 users accept
      - If user count drops below 2, project returns to "Pending" status
+     - When a user joins a project, status remains "Pending" until the minimum required users (2+) have accepted
      - Rejection reasons are stored and sent to creator
      - Rejection notes are displayed in the user's profile and can be cleared individually or all at once
 
@@ -44,12 +46,15 @@
 - Provide clear UI indicators for rejection and expiration states
 - Ensure users can easily understand next steps after rejection or expiration
 - Rejection button is enabled for all requests and projects in the user profile
+- Rejection button is disabled (faded out) after a user marks an item as completed
 - Projects and multi-department requests return to pending status when rejected by any participant
 - Optional rejection reasons are captured via modal and displayed to request creators
 - Rejection notes can be hidden individually or cleared all at once by the request creator
 
 ### Status Transitions
 - Projects and multi-department requests require at least 2 participating users to move to "In Process" status
+- Projects stay in "Pending" status until at least 2 users have accepted (even if creator + 1 user)
+- When a new user joins a project, it should remain in "Pending" status until the minimum required users (2+) have accepted
 - When a participant leaves a project or multi-department request, it immediately returns to "Pending" status
 - Only after all participants mark a project or multi-department request as completed does it change to "Completed" status
 - Individual completion status is tracked per user and visually indicated in the interface

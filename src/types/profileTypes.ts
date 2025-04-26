@@ -2,44 +2,24 @@
 export interface Request {
   id: string;
   title: string;
-  department: string | string[];
+  description?: string;
+  department: string;
   departments?: string[];
-  dateCreated: string;
   status: string;
+  dateCreated: string;
   creator: string;
   creatorDepartment?: string;
-  description?: string;
-  type: string;
-  expirationDate?: string;
-  archived?: boolean;
-  archivedAt?: string;
   createdAt?: string;
-  lastStatusUpdate?: string;
-  acceptedBy?: string[] | string;
+  type: "request" | "project";
+  creatorRole?: string;
   isExpired?: boolean;
-  lastStatusUpdateTime?: string;
-  usersNeeded?: number;
-  usersAccepted?: number;
-  participantsCompleted?: string[];
+  archived?: boolean;
   multiDepartment?: boolean;
-  statusChangedBy?: string;
-  priority?: string;
-  relatedProject?: string | null;
-  rejections?: Rejection[];
-  notes?: string;
-}
-
-export interface Rejection {
-  username: string;
-  reason: string;
-  date: string;
-}
-
-export interface UserProfile {
-  username: string;
-  fullName: string;
-  email: string;
-  phone?: string;
-  department: string;
-  role: string;
+  acceptedBy?: string[] | string;
+  participantsCompleted?: string[];
+  usersAccepted?: number;
+  usersNeeded?: number;
+  lastStatusUpdateTime?: string;
+  priority?: 'low' | 'medium' | 'high';
+  completedBy?: string[];
 }

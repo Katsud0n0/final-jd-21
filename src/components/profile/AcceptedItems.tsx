@@ -154,6 +154,7 @@ const AcceptedItems = ({
                     className="border-jd-red text-jd-red hover:bg-jd-red/10"
                     onClick={() => initiateReject(item.id, item.type === "project" ? "project" : 
                                               item.multiDepartment ? "multi" : "request")}
+                    disabled={hasMarkedCompleted(item)} // Disable reject button if item is marked as completed
                   >
                     Reject
                   </Button>
@@ -173,19 +174,19 @@ const AcceptedItems = ({
         </div>
       ) : (
         <div className="text-center py-12 bg-jd-bg rounded-lg">
-          <Clock size={48} className="mx-auto text-jd-mutedText mb-3" />
-          <h4 className="text-lg font-medium mb-2">No Accepted Items</h4>
-          <p className="text-jd-mutedText max-w-md mx-auto">
-            You haven't accepted any requests or projects yet. Go to the Requests tab to find items to work on.
+          <p className="text-jd-mutedText">
+            You haven't accepted any requests yet.
           </p>
         </div>
       )}
       
+      {/* Rejection Modal */}
       <RejectionModal
         isOpen={rejectionModalOpen}
-        onClose={() => setRejectionModalOpen(false)}
-        onReject={confirmReject}
+        setIsOpen={setRejectionModalOpen}
         itemType={selectedItemType}
+        onConfirm={(id, reason) => handleAbandon(id, reason)}
+        itemId={selectedItemId || ''}
       />
     </div>
   );

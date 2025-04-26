@@ -1,220 +1,364 @@
 
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogAction,
-  AlertDialogCancel,
-} from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import RequestsHeader from "@/components/dashboard/RequestsHeader";
 import RequestsFilters from "@/components/dashboard/RequestsFilters";
 import RequestsTable from "@/components/dashboard/RequestsTable";
-import { useRequests } from "@/hooks/useRequests";
-import { useAuth } from "@/contexts/AuthContext";
-import { useState } from "react";
-import RejectionModal from "@/components/profile/RejectionModal";
+import { Request } from "@/types/profileTypes";
+import { handleAcceptRequest, canUserAcceptRequest } from "@/utils/requestHelpers";
 
 const Requests = () => {
   const { user } = useAuth();
-  const {
-    requests,
-    searchTerm,
-    setSearchTerm,
-    statusFilter,
-    setStatusFilter,
-    departmentFilters,
-    toggleDepartmentFilter,
-    dialogOpen,
-    setDialogOpen,
-    activeTab,
-    setActiveTab,
-    acceptDialogOpen,
-    setAcceptDialogOpen,
-    detailsDialogOpen,
-    setDetailsDialogOpen,
-    selectedRequest,
-    clearFilters,
-    handleRequestSuccess,
-    handleStatusChange,
-    handleDelete,
-    handleArchive,
-    initiateAbandon,
-    confirmReject,
-    rejectionModalOpen,
-    setRejectionModalOpen,
-    requestTypeToReject,
-    handleAcceptProject,
-    confirmDelete,
-    confirmAcceptProject,
-    clearAllRequests,
-    canEditStatus,
-    canDeleteRequest,
-    canArchiveProject,
-    canAcceptRequest,
-    canAbandonRequest,
-    renderDepartmentTags,
-    renderAcceptedByDetails,
-  } = useRequests();
-  const [clearDialogOpen, setClearDialogOpen] = useState(false);
-
+  const { toast } = useToast();
+  
+  const [allRequests, setAllRequests] = useState<Request[]>([]);
+  const [filteredRequests, setFilteredRequests] = useState<Request[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  
+  // Filters
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [departmentFilters, setDepartmentFilters] = useState<string[]>([]);
+  
+  // Item to delete
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+  
+  useEffect(() => {
+    // Load requests from localStorage
+    const loadRequests = () => {
+      try {
+        setLoading(true);
+        const storedRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
+        
+        // Filter out archived projects for non-admin users
+        const filteredRequests = user?.role === 'admin'
+          ? storedRequests
+          : storedRequests.filter((req: Request) => !req.archived);
+          
+        setAllRequests(filteredRequests);
+        setFilteredRequests(filteredRequests);
+      } catch (error) {
+        console.error("Error loading requests:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load requests",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadRequests();
+  }, [user, toast]);
+  
+  // Apply filters
+  useEffect(() => {
+    let results = [...allRequests];
+    
+    // Apply search filter
+    if (searchTerm) {
+      results = results.filter((request) => 
+        request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        request.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        request.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        request.creator.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    // Apply status filter
+    if (statusFilter !== "All") {
+      results = results.filter((request) => request.status === statusFilter);
+    }
+    
+    // Apply department filter
+    if (departmentFilters.length > 0) {
+      results = results.filter((request) => {
+        // For requests with multiple departments, check if any of them match
+        if (Array.isArray(request.departments) && request.departments.length > 0) {
+          return request.departments.some(dept => departmentFilters.includes(dept));
+        }
+        // For single-department requests, check the department property
+        return departmentFilters.includes(request.department);
+      });
+    }
+    
+    setFilteredRequests(results);
+  }, [allRequests, searchTerm, statusFilter, departmentFilters]);
+  
+  const handleRequestSuccess = () => {
+    setDialogOpen(false);
+    
+    // Reload requests from localStorage
+    const storedRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
+    
+    // Filter out archived projects for non-admin users
+    const filteredRequests = user?.role === 'admin'
+      ? storedRequests
+      : storedRequests.filter((req: Request) => !req.archived);
+      
+    setAllRequests(filteredRequests);
+    setFilteredRequests(filteredRequests);
+    
+    toast({
+      title: "Success",
+      description: "Request created successfully",
+    });
+  };
+  
+  const toggleDepartmentFilter = (department: string) => {
+    setDepartmentFilters((prev) => {
+      if (prev.includes(department)) {
+        return prev.filter((d) => d !== department);
+      } else {
+        return [...prev, department];
+      }
+    });
+  };
+  
+  const clearFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("All");
+    setDepartmentFilters([]);
+  };
+  
+  const canEditStatus = (request: Request) => {
+    if (!user) return false;
+    
+    // Admin can always edit status
+    if (user.role === "admin") return true;
+    
+    // Client can never edit status directly
+    if (user.role === "client") return false;
+    
+    return false;
+  };
+  
+  const canDeleteRequest = (request: Request) => {
+    if (!user) return false;
+    
+    // Only admins and the creator can delete a request
+    if (user.role === "admin" || request.creator === user.username) {
+      return true;
+    }
+    
+    return false;
+  };
+  
+  const canArchiveProject = (request: Request) => {
+    if (!user) return false;
+    
+    // Only admins can archive projects
+    if (user.role === "admin" && request.type === "project") {
+      return !request.archived;
+    }
+    
+    return false;
+  };
+  
+  const canAcceptRequest = (request: Request) => {
+    if (!user) return false;
+    
+    // Only clients can accept requests
+    if (user.role !== "client") return false;
+    
+    return canUserAcceptRequest(request, user.username, user.department);
+  };
+  
+  const handleStatusChange = (id: string, status: string) => {
+    try {
+      const updatedRequests = allRequests.map((request) => {
+        if (request.id === id) {
+          return {
+            ...request,
+            status,
+            lastStatusUpdateTime: new Date().toLocaleTimeString(),
+          };
+        }
+        return request;
+      });
+      
+      // Update localStorage
+      localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+      
+      // Update state
+      setAllRequests(updatedRequests);
+      
+      toast({
+        title: "Status Updated",
+        description: `Request status has been updated to ${status}`,
+      });
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update the status",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const handleDelete = (id: string) => {
+    setItemToDelete(id);
+  };
+  
+  const confirmDelete = () => {
+    if (!itemToDelete) return;
+    
+    try {
+      const updatedRequests = allRequests.filter((request) => request.id !== itemToDelete);
+      
+      // Update localStorage
+      localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+      
+      // Update state
+      setAllRequests(updatedRequests);
+      setFilteredRequests(updatedRequests);
+      
+      toast({
+        title: "Request Deleted",
+        description: "The request has been deleted successfully",
+      });
+    } catch (error) {
+      console.error("Error deleting request:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete the request",
+        variant: "destructive",
+      });
+    } finally {
+      setItemToDelete(null);
+    }
+  };
+  
+  const handleArchive = (id: string) => {
+    try {
+      const updatedRequests = allRequests.map((request) => {
+        if (request.id === id) {
+          return {
+            ...request,
+            archived: true,
+          };
+        }
+        return request;
+      });
+      
+      // Update localStorage
+      localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+      
+      // Update state - remove archived projects for non-admin users
+      const filteredUpdatedRequests = user?.role === 'admin'
+        ? updatedRequests
+        : updatedRequests.filter(req => !req.archived);
+      
+      setAllRequests(filteredUpdatedRequests);
+      
+      toast({
+        title: "Project Archived",
+        description: "The project has been archived successfully",
+      });
+    } catch (error) {
+      console.error("Error archiving project:", error);
+      toast({
+        title: "Error",
+        description: "Failed to archive the project",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const handleAcceptProject = (request: Request) => {
+    try {
+      if (!user) return;
+      
+      // Update the request with the new user
+      const updatedRequests = handleAcceptRequest(allRequests, request.id, user.username);
+      
+      // Update localStorage
+      localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+      
+      // Update state
+      setAllRequests(updatedRequests);
+      
+      toast({
+        title: request.type === "project" ? "Project Accepted" : "Request Accepted",
+        description: `You have accepted the ${request.type === "project" ? "project" : "request"}. You can find it in your profile.`,
+      });
+    } catch (error) {
+      console.error("Error accepting project:", error);
+      toast({
+        title: "Error",
+        description: `Failed to accept the ${request.type === "project" ? "project" : "request"}`,
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // Render department tags
+  const renderDepartmentTags = (request: Request) => {
+    if (Array.isArray(request.departments) && request.departments.length > 0) {
+      const displayedDepartments = request.departments.slice(0, 1);
+      const remainingCount = request.departments.length - 1;
+      
+      return (
+        <div className="flex flex-wrap gap-1">
+          {displayedDepartments.map((dept, index) => (
+            <span 
+              key={index}
+              className="bg-jd-bg px-2 py-1 rounded-full text-xs"
+            >
+              {dept}
+            </span>
+          ))}
+          {remainingCount > 0 && (
+            <span className="bg-jd-bg px-2 py-1 rounded-full text-xs">
+              +{remainingCount} more
+            </span>
+          )}
+        </div>
+      );
+    }
+    
+    return <span>{request.department}</span>;
+  };
+  
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto py-8">
       <RequestsHeader 
         dialogOpen={dialogOpen}
         setDialogOpen={setDialogOpen}
         handleRequestSuccess={handleRequestSuccess}
       />
-
-      <Tabs defaultValue="all" value={activeTab} onValueChange={value => setActiveTab(value)}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="requests">Requests</TabsTrigger>
-          <TabsTrigger value="projects">Projects</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      <RequestsFilters
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        statusFilter={statusFilter}
-        setStatusFilter={setStatusFilter}
-        departmentFilters={departmentFilters}
-        toggleDepartmentFilter={toggleDepartmentFilter}
-        clearFilters={clearFilters}
-      />
-
-      <RequestsTable
-        requests={requests}
-        canEditStatus={canEditStatus}
-        canDeleteRequest={canDeleteRequest}
-        canArchiveProject={canArchiveProject}
-        canAcceptRequest={canAcceptRequest}
-        canAbandonRequest={canAbandonRequest}
-        handleStatusChange={handleStatusChange}
-        handleDelete={handleDelete}
-        handleArchive={handleArchive}
-        handleAbandon={(id: string) => initiateAbandon(id, 'request')} // Fixed type error here
-        handleAcceptProject={handleAcceptProject}
-        confirmDelete={confirmDelete}
-        renderDepartmentTags={renderDepartmentTags}
-        userRole={user?.role}
-        username={user?.username}
-      />
       
-      <RejectionModal
-        isOpen={rejectionModalOpen}
-        onClose={() => setRejectionModalOpen(false)}
-        onReject={confirmReject}
-        itemType={requestTypeToReject}
-      />
-      
-      {user?.role === "admin" && clearAllRequests && (
-        <div className="flex justify-end mt-6">
-          <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
-            <Button 
-              variant="outline" 
-              className="border-jd-red text-jd-red hover:bg-jd-red/10"
-              onClick={() => setClearDialogOpen(true)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Clear {user.department} Requests
-            </Button>
-            <AlertDialogContent className="bg-jd-card border-jd-card">
-              <AlertDialogHeader>
-                <AlertDialogTitle>Clear Department Requests</AlertDialogTitle>
-                <p className="text-jd-mutedText">
-                  Are you sure you want to clear all requests for {user.department}? This action cannot be undone.
-                </p>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="bg-jd-bg hover:bg-jd-bg/80">Cancel</AlertDialogCancel>
-                <AlertDialogAction 
-                  className="bg-red-600 hover:bg-red-700"
-                  onClick={() => {
-                    clearAllRequests();
-                    setClearDialogOpen(false);
-                  }}
-                >
-                  Clear All
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      )}
-
-      <AlertDialog open={acceptDialogOpen} onOpenChange={setAcceptDialogOpen}>
-        <AlertDialogContent className="bg-jd-card border-jd-card">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Accept {selectedRequest?.type === "project" ? "Project" : "Request"}</AlertDialogTitle>
-            <p className="text-jd-mutedText">
-              Are you sure you want to accept this {selectedRequest?.type === "project" ? "project" : "request"}? You will be added as a participant.
-            </p>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="bg-jd-bg hover:bg-jd-bg/80">Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              className="bg-jd-green hover:bg-jd-green/90"
-              onClick={confirmAcceptProject}
-            >
-              Accept
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      
-      <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
-        <DialogContent className="bg-jd-card border-jd-card">
-          <DialogHeader>
-            <DialogTitle>{selectedRequest?.title}</DialogTitle>
-          </DialogHeader>
-          {selectedRequest && (
-            <div className="space-y-4 mt-2">
-              <div>
-                <h4 className="text-sm font-medium mb-1">Required Departments:</h4>
-                <p className="text-jd-mutedText text-sm">
-                  {Array.isArray(selectedRequest.departments) 
-                    ? selectedRequest.departments.join(", ") 
-                    : selectedRequest.department}
-                </p>
-              </div>
-              {selectedRequest.creatorDepartment && (
-                <div>
-                  <h4 className="text-sm font-medium mb-1">Creator Department:</h4>
-                  <p className="text-jd-mutedText text-sm">{selectedRequest.creatorDepartment}</p>
-                </div>
-              )}
-              <div>
-                <h4 className="text-sm font-medium mb-1">Description:</h4>
-                <p className="text-jd-mutedText text-sm">{selectedRequest.description}</p>
-              </div>
-              
-              {selectedRequest.notes && (
-                <div>
-                  <h4 className="text-sm font-medium mb-1">Notes:</h4>
-                  <p className="text-jd-mutedText text-sm">{selectedRequest.notes}</p>
-                </div>
-              )}
-              
-              <div>
-                <h4 className="text-sm font-medium mb-1">Accepted By:</h4>
-                {renderAcceptedByDetails(selectedRequest)}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <div className="mt-8 space-y-4">
+        <RequestsFilters 
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          departmentFilters={departmentFilters}
+          toggleDepartmentFilter={toggleDepartmentFilter}
+          clearFilters={clearFilters}
+        />
+        
+        <RequestsTable 
+          requests={filteredRequests}
+          canEditStatus={canEditStatus}
+          canDeleteRequest={canDeleteRequest}
+          canArchiveProject={canArchiveProject}
+          canAcceptRequest={canAcceptRequest}
+          handleStatusChange={handleStatusChange}
+          handleDelete={handleDelete}
+          handleArchive={handleArchive}
+          handleAcceptProject={handleAcceptProject}
+          confirmDelete={confirmDelete}
+          renderDepartmentTags={renderDepartmentTags}
+          userRole={user?.role}
+          username={user?.username}
+        />
+      </div>
     </div>
   );
 };

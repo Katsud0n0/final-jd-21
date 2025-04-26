@@ -1,56 +1,88 @@
 
-import React, { useState } from 'react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useState } from 'react';
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 
 interface RejectionModalProps {
   isOpen: boolean;
-  onClose: () => void;
-  onReject: (reason: string) => void;
+  setIsOpen: (isOpen: boolean) => void;
   itemType: 'request' | 'project' | 'multi-department';
+  onConfirm: (id: string, reason?: string) => void;
+  itemId: string;
 }
 
-const RejectionModal = ({ isOpen, onClose, onReject, itemType }: RejectionModalProps) => {
+const RejectionModal = ({ isOpen, setIsOpen, itemType, onConfirm, itemId }: RejectionModalProps) => {
   const [reason, setReason] = useState('');
-  
-  const handleSubmit = () => {
-    onReject(reason.trim());
+
+  const handleConfirm = () => {
+    onConfirm(itemId, reason);
+    setIsOpen(false);
     setReason('');
   };
-  
+
+  const handleCancel = () => {
+    setIsOpen(false);
+    setReason('');
+  };
+
+  const getDialogTitle = () => {
+    switch (itemType) {
+      case 'project':
+        return 'Reject Project';
+      case 'multi-department':
+        return 'Reject Multi-Department Request';
+      default:
+        return 'Reject Request';
+    }
+  };
+
+  const getDialogDescription = () => {
+    switch (itemType) {
+      case 'project':
+        return 'Are you sure you want to reject this project? You will be removed as a participant.';
+      case 'multi-department':
+        return 'Are you sure you want to reject this multi-department request? You will be removed as a participant.';
+      default:
+        return 'Are you sure you want to reject this request?';
+    }
+  };
+
   return (
-    <AlertDialog open={isOpen} onOpenChange={onClose}>
-      <AlertDialogContent className="bg-jd-card border-jd-card">
-        <AlertDialogHeader>
-          <AlertDialogTitle>Reject {itemType === 'project' ? 'Project' : 'Request'}</AlertDialogTitle>
-          <p className="text-jd-mutedText">
-            Please provide a reason for rejecting this {itemType} (optional)
-          </p>
-        </AlertDialogHeader>
-        
-        <div className="my-4">
-          <Label htmlFor="rejection-reason">Rejection Reason</Label>
-          <Textarea 
-            id="rejection-reason"
-            placeholder="Enter your reason for rejecting..."
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogContent className="sm:max-w-[425px] bg-jd-card border-jd-card">
+        <DialogHeader>
+          <DialogTitle>{getDialogTitle()}</DialogTitle>
+          <DialogDescription>
+            {getDialogDescription()}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4">
+          <Textarea
+            placeholder="Optional: Provide a reason for rejection"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            className="mt-2"
+            className="min-h-[100px]"
           />
         </div>
-        
-        <AlertDialogFooter>
-          <AlertDialogCancel className="bg-jd-bg hover:bg-jd-bg/80">Cancel</AlertDialogCancel>
-          <AlertDialogAction 
-            className="bg-red-600 hover:bg-red-700"
-            onClick={handleSubmit}
+        <DialogFooter>
+          <Button variant="outline" onClick={handleCancel}>Cancel</Button>
+          <Button 
+            className="bg-jd-red hover:bg-jd-red/90" 
+            onClick={handleConfirm}
           >
             Reject
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
