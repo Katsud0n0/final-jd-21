@@ -1,3 +1,4 @@
+
 # JD Frameworks – Project Dashboard Platform
 
 ## 📚 Project Overview
@@ -16,9 +17,10 @@
 - Create and track department requests  
 - "Clear All Requests" is admin-only  
 - Toggle between Requests and Projects views  
-- Status tracking (Pending, In Process, Approved, Rejected)  
+- Status tracking (Pending, In Process, Completed, Rejected)  
 - Request expiration:  
   - Regular requests expire after 30 days if pending  
+  - Multi-department requests expire after 45 days if pending
   - Completed/Rejected requests expire after 1 day  
 - **Department Restriction Logic:**
   - Only users from the specified departments can accept requests/projects
@@ -33,10 +35,28 @@
   - Projects **cannot be abandoned** by any user after accepting (Abandon button is disabled for projects)
 - **Advanced Filtering & Details:**
   - Filter by status, department, or text search
+  - Filter accepted items by type (All, Single Requests, Multi-Department, Projects)
+  - Filter history items by type (All, Single Requests, Multi-Department, Projects)
   - Clickable info icon to view request/project details
   - Multi-department selection for projects (3-5 departments required)
   - Truncated department tags with "+X more" option for projects with many departments
   - Creator department displayed below creator name
+  
+### Single Request & Multi-Department Behavior
+
+- **Single Department Requests:**
+  - Can only be accepted by one user from the targeted department
+  - Once accepted by one user, others cannot accept it
+  - When rejected, status changes to "Rejected" and cannot be accepted by others
+  - Expire after 30 days if not accepted
+
+- **Multi-Department Requests:**
+  - Can be accepted by multiple users from specified departments
+  - If any user rejects/abandons the request, their username is removed from participants and request returns to "Pending" status
+  - Each participant must mark the request as "Completed" from their profile
+  - Request is only marked as "Completed" when all participants have completed it
+  - Expire after 45 days if not accepted
+  - When creating, displays note about 45-day expiry
 
 ### Project System
 - Projects require 2–5 users **(including the creator!)**
@@ -45,7 +65,9 @@
 - Creator department is displayed with the creator's name
 - All participants (creator + all who accept) see the project in their profile tab after accepting
 - Projects cannot be abandoned once accepted (no "Abandon" option at any time)
-- Each participant must independently mark the project as "Completed" in their profile; project status updates to "Completed" only when **all** do so
+- Each participant must independently mark the project as "Completed" in their profile
+- Project status updates to "Completed" only when **all** participants mark it complete
+- Users cannot reject a project after marking it as completed
 - Request expiration and archiving operates as before
 - Only admins can access "Clear All Requests" and archived projects in their profile
 
@@ -70,6 +92,7 @@
 - Notification Preferences: "Coming Soon"
 - Settings page: All settings except Blocking & Banning + Notifications tab work 
 - Project completion logic is "all users must complete" to set status to completed
+- Reject button is disabled after marking an item as completed
 
 ## 🗂️ Data Storage Options
 
@@ -118,6 +141,7 @@ To use SQLite for persistent storage:
      isExpired INTEGER DEFAULT 0,
      lastStatusUpdate TEXT,
      lastStatusUpdateTime TEXT,
+     multiDepartment INTEGER DEFAULT 0,
      FOREIGN KEY(creator) REFERENCES users(username)
    );
 
@@ -144,6 +168,7 @@ To use SQLite for persistent storage:
           row.participants = JSON.parse(row.participants || '[]');
           row.participantsCompleted = JSON.parse(row.participantsCompleted || '[]');
           row.departments = JSON.parse(row.departments || '[]');
+          row.acceptedBy = JSON.parse(row.acceptedBy || '[]');
        });
        res.json(rows);
      });
@@ -174,8 +199,16 @@ To use SQLite for persistent storage:
          });
        }
        
+       // Check if the request has already been accepted by someone else (for single requests)
+       if (request.type === 'request' && !request.multiDepartment) {
+         const acceptedBy = JSON.parse(request.acceptedBy || '[]');
+         if (acceptedBy.length > 0) {
+           return res.status(400).json({ error: 'This request has already been accepted by another user' });
+         }
+       }
+       
        // Process acceptance based on request type
-       if (request.type === 'project') {
+       if (request.type === 'project' || request.multiDepartment) {
          // Project logic - acceptedBy is always an array
          const acceptedBy = JSON.parse(request.acceptedBy || '[]');
          if (acceptedBy.includes(username)) {
@@ -195,13 +228,108 @@ To use SQLite for persistent storage:
            }
          );
        } else {
-         // Regular request logic - acceptedBy is a string
+         // Regular request logic - acceptedBy is an array with a single user
          db.run(
-           'UPDATE requests SET acceptedBy = ?, status = ? WHERE id = ?',
-           [username, 'In Process', id],
+           'UPDATE requests SET acceptedBy = ?, status = ?, usersAccepted = 1 WHERE id = ?',
+           [JSON.stringify([username]), 'In Process', id],
            function(err) {
              if (err) return res.status(500).json({ error: err.message });
              res.json({ message: 'Request accepted successfully' });
+           }
+         );
+       }
+     });
+   });
+
+   // Mark request as completed endpoint
+   app.post('/requests/:id/complete', (req, res) => {
+     const { id } = req.params;
+     const { username } = req.body;
+     
+     db.get('SELECT * FROM requests WHERE id = ?', [id], (err, request) => {
+       if (err) return res.status(500).json({ error: err.message });
+       if (!request) return res.status(404).json({ error: 'Request not found' });
+       
+       // For multi-department requests or projects
+       if (request.multiDepartment || request.type === 'project') {
+         let participantsCompleted = JSON.parse(request.participantsCompleted || '[]');
+         const acceptedBy = JSON.parse(request.acceptedBy || '[]');
+         
+         // Add user to completed list if not already there
+         if (!participantsCompleted.includes(username)) {
+           participantsCompleted.push(username);
+         }
+         
+         // Check if all participants have completed
+         const allCompleted = participantsCompleted.length >= acceptedBy.length;
+         const status = allCompleted ? 'Completed' : 'In Process';
+         const now = new Date().toISOString();
+         
+         db.run(
+           'UPDATE requests SET participantsCompleted = ?, status = ?, lastStatusUpdate = ? WHERE id = ?',
+           [JSON.stringify(participantsCompleted), status, now, id],
+           function(err) {
+             if (err) return res.status(500).json({ error: err.message });
+             res.json({ 
+               message: allCompleted ? 'Request completed successfully' : 'Your completion has been recorded', 
+               allCompleted 
+             });
+           }
+         );
+       } else {
+         // For regular requests
+         const now = new Date().toISOString();
+         db.run(
+           'UPDATE requests SET status = ?, lastStatusUpdate = ? WHERE id = ?',
+           ['Completed', now, id],
+           function(err) {
+             if (err) return res.status(500).json({ error: err.message });
+             res.json({ message: 'Request marked as completed' });
+           }
+         );
+       }
+     });
+   });
+
+   // Reject request endpoint
+   app.post('/requests/:id/reject', (req, res) => {
+     const { id } = req.params;
+     const { username } = req.body;
+     
+     db.get('SELECT * FROM requests WHERE id = ?', [id], (err, request) => {
+       if (err) return res.status(500).json({ error: err.message });
+       if (!request) return res.status(404).json({ error: 'Request not found' });
+       
+       // For multi-department or project requests
+       if (request.multiDepartment || request.type === 'project') {
+         let acceptedBy = JSON.parse(request.acceptedBy || '[]');
+         let participantsCompleted = JSON.parse(request.participantsCompleted || '[]');
+         
+         // Remove user from participants
+         acceptedBy = acceptedBy.filter(user => user !== username);
+         participantsCompleted = participantsCompleted.filter(user => user !== username);
+         
+         const now = new Date().toISOString();
+         const usersAccepted = Math.max((request.usersAccepted || 0) - 1, 0);
+         
+         // Set back to pending when a user rejects
+         db.run(
+           'UPDATE requests SET acceptedBy = ?, participantsCompleted = ?, usersAccepted = ?, status = ?, lastStatusUpdate = ? WHERE id = ?',
+           [JSON.stringify(acceptedBy), JSON.stringify(participantsCompleted), usersAccepted, 'Pending', now, id],
+           function(err) {
+             if (err) return res.status(500).json({ error: err.message });
+             res.json({ message: 'You have been removed from participants and request is now pending' });
+           }
+         );
+       } else {
+         // For single department requests
+         const now = new Date().toISOString();
+         db.run(
+           'UPDATE requests SET status = ?, lastStatusUpdate = ?, acceptedBy = ?, usersAccepted = 0 WHERE id = ?',
+           ['Rejected', now, '[]', id],
+           function(err) {
+             if (err) return res.status(500).json({ error: err.message });
+             res.json({ message: 'Request rejected successfully' });
            }
          );
        }

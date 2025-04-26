@@ -322,7 +322,9 @@ export const useRequests = () => {
           status: "Rejected",
           lastStatusUpdate: now.toISOString(),
           lastStatusUpdateTime: now.toLocaleTimeString(),
-          statusChangedBy: user.username
+          statusChangedBy: user.username,
+          acceptedBy: null, // Clear acceptedBy for rejected single requests
+          usersAccepted: 0
         };
       }
       return r;
@@ -386,6 +388,20 @@ export const useRequests = () => {
     }
 
     const project = requests[projectIndex];
+    
+    // For single department requests, don't allow accepting if already accepted by someone
+    if (!project.multiDepartment && project.type !== "project") {
+      const currentAcceptedBy = Array.isArray(project.acceptedBy) ? project.acceptedBy : [];
+      if (currentAcceptedBy.length > 0) {
+        toast({
+          title: "Request already accepted",
+          description: "This request has already been accepted by another user.",
+          variant: "destructive"
+        });
+        setAcceptDialogOpen(false);
+        return;
+      }
+    }
     
     const currentAcceptedBy = Array.isArray(project.acceptedBy) ? project.acceptedBy : [];
     

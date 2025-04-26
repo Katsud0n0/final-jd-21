@@ -198,6 +198,8 @@ const Profile = () => {
 
   // When user marks as completed in a project, mark their completion; update to "Completed" only after all users have marked completed.
   const handleMarkCompleted = (itemId: string) => {
+    if (!user) return;
+    
     const now = new Date();
     const requestToUpdate = requests.find(r => r.id === itemId);
     
@@ -211,15 +213,15 @@ const Profile = () => {
     }
     
     // For multi-department requests or projects, handle completion differently
-    if (requestToUpdate.type === "project" || requestToUpdate.multiDepartment) {
+    if (requestToUpdate.multiDepartment || requestToUpdate.type === "project") {
       // Get current completed participants or initialize empty array
       const participantsCompleted = Array.isArray(requestToUpdate.participantsCompleted) 
         ? [...requestToUpdate.participantsCompleted] 
         : [];
       
       // Add current user if not already in the list
-      if (!participantsCompleted.includes(user?.username || '')) {
-        participantsCompleted.push(user?.username || '');
+      if (!participantsCompleted.includes(user.username)) {
+        participantsCompleted.push(user.username);
       }
       
       // Get accepted users
@@ -284,6 +286,8 @@ const Profile = () => {
 
   // Reject button (previously Abandon)
   const handleAbandon = (itemId: string) => {
+    if (!user) return;
+    
     const item = requests.find((r: Request) => r.id === itemId);
     
     if (!item) {
@@ -304,7 +308,7 @@ const Profile = () => {
           // Get current acceptedBy list
           const currentAcceptedBy = Array.isArray(r.acceptedBy) ? [...r.acceptedBy] : [];
           // Remove current user
-          const newAcceptedBy = currentAcceptedBy.filter(username => username !== user?.username);
+          const newAcceptedBy = currentAcceptedBy.filter(username => username !== user.username);
           // Update users accepted count
           const newUsersAccepted = (r.usersAccepted || 0) - 1;
           
@@ -386,9 +390,12 @@ const Profile = () => {
 
   // Function to check if a user has already marked this project as completed
   const hasMarkedCompleted = (item: Request) => {
-    return item.type === "project"
+    if (!user) return false;
+    
+    // Check if the item has participantsCompleted array and if the current user is in it
+    return (item.multiDepartment || item.type === "project")
       && Array.isArray(item.participantsCompleted)
-      && item.participantsCompleted.includes(user?.username || '');
+      && item.participantsCompleted.includes(user.username);
   };
 
   return (
