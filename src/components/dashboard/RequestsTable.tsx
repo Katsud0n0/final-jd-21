@@ -256,12 +256,15 @@ const RequestsTable = ({
                           </Button>
                         )}
                       </div>
-                      {canAcceptRequest(request) && (
+                      
+                      {/* Always render the accept button, but disable it when needed */}
+                      {userRole === "client" && request.status === "Pending" && (
                         <Button 
                           size="sm"
                           variant="outline"
                           className="w-full mt-1 bg-jd-green/10 text-jd-green hover:bg-jd-green/20 border-jd-green/20"
                           onClick={() => handleAcceptProject(request)}
+                          disabled={!canAcceptRequest(request)}
                         >
                           <Check size={14} className="mr-1" />
                           {request.type === "project" ? "Accept Project" : "Accept Request"}
