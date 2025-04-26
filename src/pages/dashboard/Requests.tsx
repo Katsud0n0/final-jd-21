@@ -1,3 +1,4 @@
+
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -191,8 +192,6 @@ const Requests = () => {
                 <h4 className="text-sm font-medium mb-1">Accepted By:</h4>
                 {renderAcceptedByDetails(selectedRequest)}
               </div>
-              
-              {/* Removed the note about rejection from here as requested */}
             </div>
           )}
         </DialogContent>

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -85,7 +86,8 @@ export const useRequests = () => {
       const createdDate = new Date(req.createdAt || req.dateCreated);
       
       if (req.type === "request") {
-        const expiryDays = 30;
+        // Use 45 days for multi-department requests, 30 for regular requests
+        const expiryDays = req.multiDepartment ? 45 : 30;
         const expiryDate = new Date(createdDate);
         expiryDate.setDate(expiryDate.getDate() + expiryDays);
         
@@ -161,7 +163,8 @@ export const useRequests = () => {
         const updatedParticipantsCompleted = [...participantsCompleted, user.username];
         
         // Only change status to Completed if all required participants have completed
-        const shouldCompleteRequest = updatedParticipantsCompleted.length >= (requestToUpdate.usersNeeded || 2);
+        const acceptedBy = Array.isArray(requestToUpdate.acceptedBy) ? requestToUpdate.acceptedBy : [];
+        const shouldCompleteRequest = updatedParticipantsCompleted.length >= acceptedBy.length;
         
         const updatedRequests = requests.map(r => {
           if (r.id === requestId) {
@@ -256,6 +259,7 @@ export const useRequests = () => {
       return;
     }
     
+    // For multi-department requests or projects
     if (request.multiDepartment || request.type === "project") {
       const currentAcceptedBy = Array.isArray(request.acceptedBy) ? [...request.acceptedBy] : [];
       const userIndex = currentAcceptedBy.indexOf(user.username);
@@ -269,15 +273,18 @@ export const useRequests = () => {
         return;
       }
       
+      // Remove the user from acceptedBy list
       currentAcceptedBy.splice(userIndex, 1);
       
+      // Remove from participants completed list if present
       const participantsCompleted = request.participantsCompleted ? 
         request.participantsCompleted.filter(username => username !== user.username) : 
         [];
       
+      const now = new Date();
       const updatedRequests = requests.map(r => {
         if (r.id === id) {
-          // Always set status back to Pending when all users have abandoned
+          // Set status to Pending when all users have abandoned
           const newStatus = currentAcceptedBy.length === 0 ? "Pending" : r.status;
           
           return {
@@ -286,9 +293,9 @@ export const useRequests = () => {
             usersAccepted: (r.usersAccepted || 0) - 1,
             participantsCompleted: participantsCompleted,
             status: newStatus,
-            ...(newStatus !== r.status && {
-              lastStatusUpdate: new Date().toISOString(),
-              lastStatusUpdateTime: new Date().toLocaleTimeString()
+            ...(newStatus === "Pending" && {
+              lastStatusUpdate: now.toISOString(),
+              lastStatusUpdateTime: now.toLocaleTimeString()
             })
           };
         }
@@ -305,6 +312,7 @@ export const useRequests = () => {
       return;
     }
     
+    // For single department requests
     const now = new Date();
     const updatedRequests = requests.map(r => {
       if (r.id === id) {
@@ -431,7 +439,6 @@ export const useRequests = () => {
     return false;
   };
 
-  // Updated to prevent accepting single requests that are rejected or completed
   const canAcceptRequest = (request: Request) => {
     if (!user || !request || user.role !== "client") return false;
 
@@ -448,10 +455,14 @@ export const useRequests = () => {
     const acceptedBy = Array.isArray(request.acceptedBy) ? [...request.acceptedBy] : 
                       request.acceptedBy ? [request.acceptedBy as string] : [];
     const notAlreadyAccepted = !acceptedBy.includes(user.username);
-
-    // Don't allow accepting rejected single requests or completed requests
-    if ((request.status === "Rejected" && !request.multiDepartment && request.type !== "project") || 
-        (request.status === "Completed")) {
+    
+    // Don't allow accepting completed requests
+    if (request.status === "Completed") {
+      return false;
+    }
+    
+    // Don't allow accepting rejected single requests (not multi-department or project)
+    if (request.status === "Rejected" && !request.multiDepartment && request.type !== "project") {
       return false;
     }
 
@@ -594,9 +605,9 @@ export const useRequests = () => {
       return "None";
     }
     
-    if (Array.isArray(request.acceptedBy)) {
-      // For multi-department requests and projects, show all accepted users
-      if (request.multiDepartment || request.type === "project") {      
+    // For multi-department requests and projects, show all accepted users
+    if (request.multiDepartment || request.type === "project") {
+      if (Array.isArray(request.acceptedBy)) {
         return (
           <div className="space-y-1 mt-1">
             {request.acceptedBy.map((username, idx) => (
@@ -616,28 +627,29 @@ export const useRequests = () => {
             )}
           </div>
         );
-      } 
-      // For single requests, only show current user if they accepted
-      else if (user && request.acceptedBy.includes(user.username)) {
-        return (
-          <div className="space-y-1 mt-1">
-            <div className="flex items-center gap-1">
-              <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
-                {user.username}
-              </span>
-              {request.participantsCompleted?.includes(user.username) && (
-                <Check size={12} className="text-green-500" />
-              )}
-            </div>
-          </div>
-        );
       }
-      
-      return "None";
     }
     
-    // For string acceptedBy value
-    return typeof request.acceptedBy === 'string' ? request.acceptedBy : 'None';
+    // For single requests, only show current user if they accepted
+    if (user && (
+      (Array.isArray(request.acceptedBy) && request.acceptedBy.includes(user.username)) || 
+      request.acceptedBy === user.username
+    )) {
+      return (
+        <div className="space-y-1 mt-1">
+          <div className="flex items-center gap-1">
+            <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
+              {user.username}
+            </span>
+            {request.participantsCompleted?.includes(user.username) && (
+              <Check size={12} className="text-green-500" />
+            )}
+          </div>
+        </div>
+      );
+    }
+    
+    return "None";
   };
 
   const filteredRequests = requests.filter(request => {
