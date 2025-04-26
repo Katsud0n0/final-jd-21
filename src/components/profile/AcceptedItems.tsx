@@ -42,14 +42,6 @@ const AcceptedItems = ({
     setRejectionModalOpen(true);
   };
 
-  const confirmReject = (reason: string) => {
-    if (selectedItemId) {
-      handleAbandon(selectedItemId, reason);
-    }
-    setRejectionModalOpen(false);
-    setSelectedItemId(null);
-  };
-
   return (
     <div className="bg-jd-card rounded-lg p-6">
       <div className="flex justify-between items-center mb-6">
@@ -151,7 +143,9 @@ const AcceptedItems = ({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="border-jd-red text-jd-red hover:bg-jd-red/10"
+                    className={`border-jd-red text-jd-red hover:bg-jd-red/10 ${
+                      hasMarkedCompleted(item) ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                     onClick={() => initiateReject(item.id, item.type === "project" ? "project" : 
                                               item.multiDepartment ? "multi" : "request")}
                     disabled={hasMarkedCompleted(item)} // Disable reject button if item is marked as completed

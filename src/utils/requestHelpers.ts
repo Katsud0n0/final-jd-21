@@ -9,7 +9,8 @@ export const updateRequestStatus = (request: Request): Request => {
   if (request.multiDepartment || request.type === "project") {
     const acceptedCount = Array.isArray(request.acceptedBy) ? request.acceptedBy.length : 0;
     
-    // Status is "Pending" if less than 2 users have accepted
+    // Status should always be "Pending" if less than 2 users have accepted
+    // This is a critical fix to ensure projects stay in pending until they have enough users
     if (acceptedCount < 2) {
       return {
         ...request,
@@ -17,7 +18,7 @@ export const updateRequestStatus = (request: Request): Request => {
         usersAccepted: acceptedCount
       };
     } 
-    // Status is "In Process" if 2 or more users have accepted
+    // Status is "In Process" only if 2 or more users have accepted
     else {
       return {
         ...request,
@@ -81,9 +82,8 @@ export const handleAcceptRequest = (
       // Update the usersAccepted count
       const usersAccepted = acceptedBy.length;
       
-      // Status should be "Pending" if less than 2 users have accepted
-      // Status should be "In Process" if 2 or more users have accepted
-      // This ensures projects with just 1 user remain in "Pending" status until at least 2 users join
+      // Status must be "Pending" if less than 2 users have accepted (critical fix)
+      // Status should be "In Process" only if 2 or more users have accepted
       const newStatus = usersAccepted < 2 ? "Pending" : "In Process";
       
       return {
@@ -91,7 +91,8 @@ export const handleAcceptRequest = (
         acceptedBy,
         usersAccepted,
         status: req.multiDepartment || req.type === "project" ? newStatus : "In Process",
-        lastStatusUpdateTime: new Date().toLocaleTimeString()
+        lastStatusUpdateTime: new Date().toLocaleTimeString(),
+        lastStatusUpdate: new Date().toISOString()
       };
     }
     return req;

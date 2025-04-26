@@ -20,6 +20,26 @@ export interface Request {
   usersAccepted?: number;
   usersNeeded?: number;
   lastStatusUpdateTime?: string;
+  lastStatusUpdate?: string;
   priority?: 'low' | 'medium' | 'high';
   completedBy?: string[];
+  statusChangedBy?: string;
+  archivedAt?: string;
+  rejections?: Rejection[];
+}
+
+export interface Rejection {
+  username: string;
+  reason: string;
+  date: string;
+  hidden?: boolean;
+}
+
+export interface UserProfile {
+  username: string;
+  fullName: string;
+  email: string;
+  department: string;
+  role: string;
+  phone?: string;
 }

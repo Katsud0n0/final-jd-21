@@ -51,7 +51,7 @@ const RejectionModal = ({ isOpen, setIsOpen, itemType, onConfirm, itemId }: Reje
       case 'multi-department':
         return 'Are you sure you want to reject this multi-department request? You will be removed as a participant.';
       default:
-        return 'Are you sure you want to reject this request?';
+        return 'Are you sure you want to reject this request? Please provide a reason for rejection.';
     }
   };
 

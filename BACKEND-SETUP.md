@@ -80,6 +80,23 @@
   - rejections: Stores rejection reasons and metadata
   - users: Stores user information and roles
 
+### Local Database Access
+
+#### SQLite Database Location
+The SQLite database file is located at `./data/jd-requests.db` in the project root directory.
+
+#### How to View the Database
+1. Download and install a SQLite browser like "DB Browser for SQLite" (https://sqlitebrowser.org/)
+2. Open the application and select "Open Database"
+3. Navigate to your project directory and select the `./data/jd-requests.db` file
+4. You can now browse tables, run queries, and examine the data structure
+
+#### Alternative Using SQLite CLI
+1. Install SQLite command-line tool if not already installed
+2. Open a terminal in your project directory
+3. Run `sqlite3 ./data/jd-requests.db`
+4. Use SQLite commands like `.tables` to see available tables, and SQL queries to examine data
+
 ## Recommended Backend Endpoints
 
 ### Request Management
@@ -109,23 +126,6 @@
 - `GET /users/{username}/rejections` (gets all rejection notes for a user)
 - `DELETE /users/{username}/rejections` (clears all rejection notes)
 - `DELETE /users/{username}/rejections/{rejectionId}` (clears specific rejection note)
-
-## Local Database Access
-
-### SQLite Database Location
-The SQLite database file is located at `./data/jd-requests.db` in the project root directory.
-
-### How to View the Database
-1. Download and install a SQLite browser like "DB Browser for SQLite" (https://sqlitebrowser.org/)
-2. Open the application and select "Open Database"
-3. Navigate to your project directory and select the `./data/jd-requests.db` file
-4. You can now browse tables, run queries, and examine the data structure
-
-### Alternative Using SQLite CLI
-1. Install SQLite command-line tool if not already installed
-2. Open a terminal in your project directory
-3. Run `sqlite3 ./data/jd-requests.db`
-4. Use SQLite commands like `.tables` to see available tables, and SQL queries to examine data
 
 ### Data Storage Notes
 - In the development environment, data is temporarily stored in browser localStorage under the key "jd-requests"
