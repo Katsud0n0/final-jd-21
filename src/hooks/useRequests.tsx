@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -153,14 +152,27 @@ export const useRequests = () => {
       return;
     }
 
-    if (requestToUpdate?.multiDepartment && newStatus === "Completed") {
+    // For multi-department requests or projects, handle the completion logic differently
+    if ((requestToUpdate?.multiDepartment || requestToUpdate?.type === "project") && newStatus === "Completed") {
       const participantsCompleted = requestToUpdate.participantsCompleted || [];
-      if (participantsCompleted.length < (requestToUpdate.usersNeeded || 2)) {
+      
+      // Add current user to the completed participants if not already there
+      if (!participantsCompleted.includes(user.username)) {
+        const updatedParticipantsCompleted = [...participantsCompleted, user.username];
+        
+        // Only change status to Completed if all required participants have completed
+        const shouldCompleteRequest = updatedParticipantsCompleted.length >= (requestToUpdate.usersNeeded || 2);
+        
         const updatedRequests = requests.map(r => {
           if (r.id === requestId) {
             return {
               ...r,
-              participantsCompleted: [...participantsCompleted, user.username]
+              participantsCompleted: updatedParticipantsCompleted,
+              ...(shouldCompleteRequest && { 
+                status: "Completed",
+                lastStatusUpdate: now.toISOString(),
+                lastStatusUpdateTime: now.toLocaleTimeString()
+              })
             };
           }
           return r;
@@ -170,13 +182,17 @@ export const useRequests = () => {
         localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
         
         toast({
-          title: "Progress saved",
-          description: "Other participants need to mark as completed as well.",
+          title: shouldCompleteRequest ? "Request completed" : "Progress saved",
+          description: shouldCompleteRequest 
+            ? "All participants have marked this as complete." 
+            : "Other participants need to mark as completed as well.",
         });
+        
         return;
       }
     }
     
+    // Handle regular status changes
     const updatedRequests = requests.map(r => {
       if (r.id === requestId) {
         const updatedRequest = { 
@@ -415,7 +431,7 @@ export const useRequests = () => {
     return false;
   };
 
-  // Updated to fix the acceptance logic for multi-dept and project requests
+  // Updated to prevent accepting single requests that are rejected
   const canAcceptRequest = (request: Request) => {
     if (!user || !request || user.role !== "client") return false;
 
@@ -433,8 +449,12 @@ export const useRequests = () => {
                       request.acceptedBy ? [request.acceptedBy as string] : [];
     const notAlreadyAccepted = !acceptedBy.includes(user.username);
 
-    // Allow accepting multi-department and project requests even after rejection
-    // This enables users to accept requests after others have rejected them
+    // Don't allow accepting rejected single requests 
+    // Only allow accepting multi-department and project requests even after rejection
+    if (request.status === "Rejected" && !request.multiDepartment && request.type !== "project") {
+      return false;
+    }
+
     return notArchived && isForUserDepartment && notAlreadyAccepted;
   };
 

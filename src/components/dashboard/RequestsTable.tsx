@@ -323,9 +323,10 @@ const RequestsTable = ({
                               request.acceptedBy.includes(username) ? (
                                 <span className="text-jd-green font-medium">Accepted</span>
                               ) : (
-                                // Update to show "Can't accept" for client's own department
                                 <span className="text-jd-mutedText">
-                                  {request.creator === username ? "Can't accept" : "Not for your department"}
+                                  {request.creator === username ? "Can't accept" : 
+                                   (request.status === "Rejected" && !request.multiDepartment && request.type !== "project") ? 
+                                   "Can't accept" : "Not for your department"}
                                 </span>
                               )}
                             </div>

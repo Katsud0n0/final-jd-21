@@ -193,11 +193,7 @@ const Requests = () => {
                 {renderAcceptedByDetails(selectedRequest)}
               </div>
               
-              {selectedRequest.type === "request" && (
-                <div className="mt-2 p-2 bg-red-100 text-red-800 text-xs rounded-md">
-                  If rejected, please submit a new request to restart
-                </div>
-              )}
+              {/* Removed the note about rejection from here as requested */}
             </div>
           )}
         </DialogContent>

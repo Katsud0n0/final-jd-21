@@ -134,7 +134,6 @@ const AcceptedItems = ({ acceptedItems, handleMarkCompleted, handleAbandon, hasM
                               {renderAcceptedByDetails(item)}
                             </div>
                           </div>
-                          {/* Removed the note from here */}
                         </div>
                       </DialogContent>
                     </Dialog>
@@ -174,7 +173,7 @@ const AcceptedItems = ({ acceptedItems, handleMarkCompleted, handleAbandon, hasM
                   </Button>
                   
                   {/* Show Reject button for projects and multi-department requests, or single department requests */}
-                  {(item.multiDepartment || (item.type === "request" && !item.multiDepartment)) && (
+                  {(item.multiDepartment || item.type === "project" || (!item.multiDepartment && item.type === "request")) && (
                     <Button 
                       size="sm" 
                       variant="destructive"
