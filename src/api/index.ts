@@ -118,7 +118,8 @@ export const api = {
     return handleResponse(response);
   },
   
-  // New function to check if a user can accept a request
+  // Function to check if a user can accept a request 
+  // (This is now more permissive to allow accepting after rejection)
   canUserAcceptRequest: async (requestId: string, username: string, department: string) => {
     const response = await fetch(`${API_URL}/requests/${requestId}/can-accept`, {
       method: 'POST',

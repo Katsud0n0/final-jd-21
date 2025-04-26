@@ -1,8 +1,10 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Request } from "@/types/profileTypes";
 import { Check } from "lucide-react";
+import { api } from "@/api";
 
 export const useRequests = () => {
   const { toast } = useToast();
@@ -413,23 +415,27 @@ export const useRequests = () => {
     return false;
   };
 
-  // Fixed the canAcceptRequest function to properly check department inclusion
+  // Updated to fix the acceptance logic for multi-dept and project requests
   const canAcceptRequest = (request: Request) => {
     if (!user || !request || user.role !== "client") return false;
 
-    // Allow accepting requests regardless of status (including Rejected)
+    // Don't allow accepting your own requests
+    if (request.creator === user.username) return false;
+    
+    // Check if request is not archived
     const notArchived = !request.archived;
-    const isNotCreator = request.creator !== user.username;
     
     // Check if the request is for the user's department
     const isForUserDepartment = isUserDepartmentIncluded(request);
     
     // Check if user has already accepted
-    const acceptedBy = Array.isArray(request.acceptedBy) ? request.acceptedBy : 
+    const acceptedBy = Array.isArray(request.acceptedBy) ? [...request.acceptedBy] : 
                       request.acceptedBy ? [request.acceptedBy as string] : [];
     const notAlreadyAccepted = !acceptedBy.includes(user.username);
-    
-    return notArchived && isNotCreator && isForUserDepartment && notAlreadyAccepted;
+
+    // Allow accepting multi-department and project requests even after rejection
+    // This enables users to accept requests after others have rejected them
+    return notArchived && isForUserDepartment && notAlreadyAccepted;
   };
 
   const canAbandonRequest = (request: Request) => {

@@ -134,12 +134,7 @@ const AcceptedItems = ({ acceptedItems, handleMarkCompleted, handleAbandon, hasM
                               {renderAcceptedByDetails(item)}
                             </div>
                           </div>
-
-                          {item.type === "request" && (
-                            <div className="mt-2 p-2 bg-red-100 text-red-800 text-xs rounded-md">
-                              If rejected, please submit a new request to restart
-                            </div>
-                          )}
+                          {/* Removed the note from here */}
                         </div>
                       </DialogContent>
                     </Dialog>

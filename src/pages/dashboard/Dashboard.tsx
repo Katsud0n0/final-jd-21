@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import RequestForm from "@/components/dashboard/RequestForm";
 import { useAuth } from "@/contexts/AuthContext";
+import { api } from "@/api";
 
 const Dashboard = () => {
   const [requests, setRequests] = useState<any[]>([]);
@@ -116,6 +117,24 @@ const Dashboard = () => {
   const completedRequests = requests.filter(r => r.status === "Completed").length;
   const rejectedRequests = requests.filter(r => r.status === "Rejected").length;
 
+  const getUserRequests = () => {
+    // Filter requests created by the current user or where the user is a participant
+    return requests.filter(req => {
+      // For requests the user created
+      const userIsCreator = req.creator === user?.username;
+      
+      // For requests the user accepted
+      let userIsParticipant = false;
+      if (Array.isArray(req.acceptedBy)) {
+        userIsParticipant = req.acceptedBy.includes(user?.username);
+      } else if (typeof req.acceptedBy === 'string') {
+        userIsParticipant = req.acceptedBy === user?.username;
+      }
+      
+      return userIsCreator || userIsParticipant;
+    }).slice(0, 3); // Get only the first 3
+  };
+
   return (
     <div className="space-y-8">
       <h2 className="text-2xl font-medium">Welcome back, {user?.username || 'user'}</h2>
@@ -170,9 +189,9 @@ const Dashboard = () => {
             </a>
           </div>
           
-          {requests.length > 0 ? (
+          {getUserRequests().length > 0 ? (
             <div className="space-y-4">
-              {requests.slice(0, 3).map((request, index) => (
+              {getUserRequests().map((request, index) => (
                 <div 
                   key={index} 
                   className={`p-4 bg-jd-bg rounded-lg ${
