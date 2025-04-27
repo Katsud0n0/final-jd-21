@@ -54,7 +54,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
   };
 
   const handleDepartmentChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, department: value }));
     setFormError(""); // Clear any error when department is selected
   };
 
