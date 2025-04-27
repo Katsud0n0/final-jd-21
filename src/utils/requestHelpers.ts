@@ -8,17 +8,18 @@ export const updateRequestStatus = (request: Request): Request => {
   // For multi-department requests and projects
   if (request.multiDepartment || request.type === "project") {
     const acceptedCount = Array.isArray(request.acceptedBy) ? request.acceptedBy.length : 0;
+    const usersNeeded = request.usersNeeded || 2;
     
-    // Status should always be "Pending" if less than 2 users have accepted
-    // This is a critical fix to ensure projects stay in pending until they have enough users
-    if (acceptedCount < 2) {
+    // Status should be "Pending" if less users have accepted than needed
+    // Only change to "In Process" when ALL required users have accepted
+    if (acceptedCount < usersNeeded) {
       return {
         ...request,
         status: "Pending",
         usersAccepted: acceptedCount
       };
     } 
-    // Status is "In Process" only if 2 or more users have accepted
+    // Status is "In Process" only if all required users have accepted
     else {
       return {
         ...request,
@@ -81,10 +82,11 @@ export const handleAcceptRequest = (
       
       // Update the usersAccepted count
       const usersAccepted = acceptedBy.length;
+      const usersNeeded = req.usersNeeded || 2;
       
-      // Status must be "Pending" if less than 2 users have accepted (critical fix)
-      // Status should be "In Process" only if 2 or more users have accepted
-      const newStatus = usersAccepted < 2 ? "Pending" : "In Process";
+      // Status must be "Pending" if there are fewer users than needed
+      // Status should be "In Process" only if all required users have accepted
+      const newStatus = usersAccepted < usersNeeded ? "Pending" : "In Process";
       
       return {
         ...req,
