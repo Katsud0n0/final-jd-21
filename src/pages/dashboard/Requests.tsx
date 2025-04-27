@@ -4,6 +4,9 @@ import { useToast } from "@/hooks/use-toast";
 import RequestsHeader from "@/components/dashboard/RequestsHeader";
 import RequestsFilters from "@/components/dashboard/RequestsFilters";
 import RequestsTable from "@/components/dashboard/RequestsTable";
+import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
+import { Trash2 } from "lucide-react";
 import { Request } from "@/types/profileTypes";
 import { handleAcceptRequest, canUserAcceptRequest } from "@/utils/requestHelpers";
 
@@ -15,6 +18,7 @@ const Requests = () => {
   const [filteredRequests, setFilteredRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -166,63 +170,6 @@ const Requests = () => {
     return canUserAcceptRequest(request, user.username, user.department);
   };
   
-  const handleRequestAction = (id: string, action: string, username?: string) => {
-    const requests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
-    const updatedRequests = requests.map((request: any) => {
-      if (request.id === id) {
-        let updatedRequest = { ...request };
-
-        switch (action) {
-          case "accept":
-            if (!updatedRequest.acceptedBy) {
-              updatedRequest.acceptedBy = [];
-            }
-            if (Array.isArray(updatedRequest.acceptedBy) && !updatedRequest.acceptedBy.includes(username)) {
-              updatedRequest.acceptedBy = [...updatedRequest.acceptedBy, username];
-              updatedRequest.usersAccepted = updatedRequest.acceptedBy.length;
-              
-              // Check if we have enough users to move to "In Process"
-              if (updatedRequest.type === "project" || updatedRequest.multiDepartment) {
-                // Only change to "In Process" if we have enough users
-                if (updatedRequest.usersAccepted >= (updatedRequest.usersNeeded || 2)) {
-                  updatedRequest.status = "In Process";
-                } else {
-                  updatedRequest.status = "Pending";
-                }
-              } else {
-                updatedRequest.status = "In Process";
-              }
-            }
-            break;
-            
-          case "reject":
-          case "abandon":
-            if (updatedRequest.type === "project" || updatedRequest.multiDepartment) {
-              // Remove user from acceptedBy
-              updatedRequest.acceptedBy = updatedRequest.acceptedBy.filter((u: string) => u !== username);
-              updatedRequest.usersAccepted = updatedRequest.acceptedBy.length;
-              
-              // Always return to "Pending" status when a user leaves
-              updatedRequest.status = "Pending";
-            } else {
-              // For single department requests, just set to rejected
-              updatedRequest.status = "Rejected";
-            }
-            break;
-            
-          default:
-            break;
-        }
-        
-        return updatedRequest;
-      }
-      return request;
-    });
-
-    localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
-    setAllRequests(updatedRequests);
-  };
-  
   const handleStatusChange = (id: string, status: string) => {
     try {
       const updatedRequests = allRequests.map((request) => {
@@ -352,6 +299,28 @@ const Requests = () => {
     }
   };
   
+  // Function to handle clearing all departmental requests (admin only)
+  const handleClearDepartmentalRequests = () => {
+    if (!user || user.role !== "admin") return;
+    
+    // Filter out requests for admin's department
+    const updatedRequests = allRequests.filter((request) => {
+      const isDepartmentRequest = request.department === user.department || 
+        (Array.isArray(request.departments) && request.departments.includes(user.department));
+      
+      return !isDepartmentRequest;
+    });
+    
+    setAllRequests(updatedRequests);
+    localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+    setDeleteOpen(false);
+    
+    toast({
+      title: "Requests cleared",
+      description: `All ${user.department} department requests have been cleared`,
+    });
+  };
+  
   // Render department tags
   const renderDepartmentTags = (request: Request) => {
     if (Array.isArray(request.departments) && request.departments.length > 0) {
@@ -414,6 +383,38 @@ const Requests = () => {
           userRole={user?.role}
           username={user?.username}
         />
+        
+        {/* Clear All Requests Button for Admins */}
+        {user?.role === "admin" && (
+          <div className="flex justify-end mt-6">
+            <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="ml-auto">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Clear All {user.department} Requests
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-jd-card border-jd-card">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete all requests related to the {user.department} department.
+                    This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleClearDepartmentalRequests}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Delete All
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
       </div>
     </div>
   );
