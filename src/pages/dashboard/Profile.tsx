@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -11,10 +10,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import RejectionModal from "@/components/profile/RejectionModal";
 import { Request } from "@/types/profileTypes";
 import AcceptedItems from "@/components/profile/AcceptedItems";
+import { LogOut } from "lucide-react";
 
 // Create RejectionModal component if it doesn't exist already
 const Profile = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [createdRequests, setCreatedRequests] = useState<Request[]>([]);
@@ -312,295 +312,307 @@ const Profile = () => {
   });
   
   return (
-    <div className="container mx-auto py-6">
-      <h1 className="text-2xl font-bold mb-6">Your Profile</h1>
-      
-      <div className="mb-8">
-        <div className="bg-jd-card rounded-lg p-6">
-          <div className="flex flex-col sm:flex-row gap-6">
-            <div className="flex-shrink-0">
-              <div className="h-20 w-20 rounded-full bg-jd-purple flex items-center justify-center text-white text-2xl font-medium">
-                {user?.fullName?.charAt(0).toUpperCase() || "U"}
-              </div>
+    <div className="min-h-screen bg-jd-bg">
+      <div className="max-w-5xl mx-auto py-8 px-4">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold">Your Profile</h1>
+            <p className="text-jd-mutedText mt-1">Manage your profile and preferences</p>
+          </div>
+          <Button 
+            variant="outline" 
+            className="text-jd-red hover:text-red-600 hover:bg-red-500/10"
+            onClick={logout}
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            Logout
+          </Button>
+        </div>
+
+        <div className="bg-jd-card rounded-lg p-6 mb-8">
+          <div className="flex items-start gap-4">
+            <div className="h-16 w-16 rounded-full bg-jd-purple flex items-center justify-center text-white text-xl">
+              {user?.fullName?.charAt(0) || "U"}
             </div>
-            <div className="flex-1">
+            <div>
               <h2 className="text-xl font-medium">{user?.fullName}</h2>
-              <p className="text-jd-mutedText">@{user?.username}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <div className="bg-jd-purple/10 text-jd-purple px-3 py-1 rounded-full text-sm">
+              <p className="text-jd-purple">@{user?.username}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-sm bg-jd-bg px-2 py-1 rounded">
                   {user?.department}
-                </div>
-                <div className="bg-jd-purple/10 text-jd-purple px-3 py-1 rounded-full text-sm">
-                  {user?.role || "User"}
-                </div>
+                </span>
+                <span className="text-sm bg-jd-bg px-2 py-1 rounded">
+                  {user?.role}
+                </span>
               </div>
-              <p className="mt-2 text-jd-mutedText">{user?.email}</p>
+              <p className="text-sm text-jd-mutedText mt-2">
+                {user?.email}
+              </p>
             </div>
           </div>
         </div>
-      </div>
-      
-      <Tabs defaultValue="created">
-        <TabsList className="w-full grid grid-cols-1 md:grid-cols-4 mb-6">
-          <TabsTrigger value="created">
-            Created Requests {createdRequests.length > 0 && `(${createdRequests.length})`}
-          </TabsTrigger>
-          <TabsTrigger value="accepted">
-            Accepted Items {acceptedItems.length > 0 && `(${acceptedItems.length})`}
-          </TabsTrigger>
-          <TabsTrigger value="history">
-            History {historyItems.length > 0 && `(${historyItems.length})`}
-          </TabsTrigger>
-          <TabsTrigger value="rejections">
-            Rejection Notes {rejectionNotes.length > 0 && `(${rejectionNotes.length})`}
-          </TabsTrigger>
-        </TabsList>
         
-        {/* Created Requests Tab */}
-        <TabsContent value="created">
-          <div className="bg-jd-card rounded-lg p-6">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h3 className="text-xl font-medium">Created Requests</h3>
-                <p className="text-jd-mutedText">
-                  Requests you've created
-                </p>
+        <Tabs defaultValue="created">
+          <TabsList className="w-full grid grid-cols-1 md:grid-cols-4 mb-6">
+            <TabsTrigger value="created">
+              Created Requests {createdRequests.length > 0 && `(${createdRequests.length})`}
+            </TabsTrigger>
+            <TabsTrigger value="accepted">
+              Accepted Items {acceptedItems.length > 0 && `(${acceptedItems.length})`}
+            </TabsTrigger>
+            <TabsTrigger value="history">
+              History {historyItems.length > 0 && `(${historyItems.length})`}
+            </TabsTrigger>
+            <TabsTrigger value="rejections">
+              Rejection Notes {rejectionNotes.length > 0 && `(${rejectionNotes.length})`}
+            </TabsTrigger>
+          </TabsList>
+          
+          {/* Created Requests Tab */}
+          <TabsContent value="created">
+            <div className="bg-jd-card rounded-lg p-6">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-xl font-medium">Created Requests</h3>
+                  <p className="text-jd-mutedText">
+                    Requests you've created
+                  </p>
+                </div>
               </div>
-            </div>
-            
-            {createdRequests.length > 0 ? (
-              <div className="space-y-4">
-                {createdRequests.map((item, index) => (
-                  <div key={index} className="border border-jd-bg rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-medium">{item.title}</h4>
-                          <span className={`inline-flex items-center px-2 py-1 rounded text-xs
-                            ${item.type === "project" ? "bg-blue-500/20 text-blue-500" : 
-                              item.multiDepartment ? "bg-purple-500/20 text-purple-500" : 
-                              "bg-green-500/20 text-green-500"}`}>
-                            {item.type === "project" ? "Project" : 
-                              item.multiDepartment ? "Multi-Dept" : 
-                              "Request"}
-                          </span>
-                          <span className={`inline-flex items-center px-2 py-1 rounded text-xs
-                            ${item.status === "Pending" ? "bg-jd-orange/20 text-jd-orange" : 
-                              item.status === "In Process" ? "bg-blue-500/20 text-blue-500" : 
-                              item.status === "Completed" ? "bg-green-500/20 text-green-500" : 
-                              "bg-gray-500/20 text-gray-500"}`}>
-                            {item.status}
+              
+              {createdRequests.length > 0 ? (
+                <div className="space-y-4">
+                  {createdRequests.map((item, index) => (
+                    <div key={index} className="border border-jd-bg rounded-lg p-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-medium">{item.title}</h4>
+                            <span className={`inline-flex items-center px-2 py-1 rounded text-xs
+                              ${item.type === "project" ? "bg-blue-500/20 text-blue-500" : 
+                                item.multiDepartment ? "bg-purple-500/20 text-purple-500" : 
+                                "bg-green-500/20 text-green-500"}`}>
+                              {item.type === "project" ? "Project" : 
+                                item.multiDepartment ? "Multi-Dept" : 
+                                "Request"}
+                            </span>
+                            <span className={`inline-flex items-center px-2 py-1 rounded text-xs
+                              ${item.status === "Pending" ? "bg-jd-orange/20 text-jd-orange" : 
+                                item.status === "In Process" ? "bg-blue-500/20 text-blue-500" : 
+                                item.status === "Completed" ? "bg-green-500/20 text-green-500" : 
+                                "bg-gray-500/20 text-gray-500"}`}>
+                              {item.status}
+                            </span>
+                          </div>
+                          <p className="text-sm text-jd-purple">{item.department}</p>
+                          <p className="text-sm text-jd-mutedText mt-1">
+                            {item.description?.slice(0, 100)}{item.description?.length > 100 ? '...' : ''}
+                          </p>
+                          
+                          {(item.multiDepartment || item.type === "project") && item.acceptedBy && Array.isArray(item.acceptedBy) && (
+                            <div className="mt-2">
+                              <p className="text-xs text-jd-mutedText">Participants ({item.acceptedBy.length}):</p>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {item.acceptedBy.map((username, idx) => (
+                                  <div key={idx} className="flex items-center gap-1">
+                                    <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
+                                      {username}
+                                    </span>
+                                    {item.participantsCompleted?.includes(username) && (
+                                      <Check size={12} className="text-green-500" />
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                              
+                              {item.acceptedBy.length < 2 && (
+                                <p className="text-xs text-amber-600 mt-1">
+                                  Waiting for more users to join before changing to In Process
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {item.lastStatusUpdateTime && (
+                        <div className="mt-2 flex items-center gap-1 text-xs text-jd-mutedText">
+                          <Clock size={12} />
+                          <span>
+                            Last updated: {item.lastStatusUpdateTime}
                           </span>
                         </div>
-                        <p className="text-sm text-jd-purple">{item.department}</p>
-                        <p className="text-sm text-jd-mutedText mt-1">
-                          {item.description?.slice(0, 100)}{item.description?.length > 100 ? '...' : ''}
-                        </p>
-                        
-                        {(item.multiDepartment || item.type === "project") && item.acceptedBy && Array.isArray(item.acceptedBy) && (
-                          <div className="mt-2">
-                            <p className="text-xs text-jd-mutedText">Participants ({item.acceptedBy.length}):</p>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {item.acceptedBy.map((username, idx) => (
-                                <div key={idx} className="flex items-center gap-1">
-                                  <span className="bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full">
-                                    {username}
-                                  </span>
-                                  {item.participantsCompleted?.includes(username) && (
-                                    <Check size={12} className="text-green-500" />
-                                  )}
-                                </div>
-                              ))}
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 bg-jd-bg rounded-lg">
+                  <p className="text-jd-mutedText">
+                    You haven't created any requests yet.
+                  </p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+          
+          {/* Accepted Items Tab */}
+          <TabsContent value="accepted">
+            <AcceptedItems 
+              acceptedItems={acceptedItems} 
+              handleMarkCompleted={handleMarkCompleted} 
+              handleAbandon={handleAbandon} 
+              hasMarkedCompleted={hasMarkedCompleted}
+              user={user}
+            />
+            <RejectionModal 
+              isOpen={rejectionModalOpen}
+              setIsOpen={setRejectionModalOpen}
+              itemType={selectedItemType}
+              onConfirm={handleAbandon}
+              itemId={selectedItemId || ""}
+            />
+          </TabsContent>
+          
+          {/* History Tab */}
+          <TabsContent value="history">
+            <div className="bg-jd-card rounded-lg p-6">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-xl font-medium">History</h3>
+                  <p className="text-jd-mutedText">
+                    Previously completed and rejected items
+                  </p>
+                </div>
+                
+                {historyItems.length > 0 && (
+                  <Select value={historyTypeFilter} onValueChange={setHistoryTypeFilter}>
+                    <SelectTrigger className="w-[180px]">
+                      <div className="flex items-center gap-2">
+                        <Filter size={16} />
+                        <SelectValue placeholder="Filter by type" />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Items</SelectItem>
+                      <SelectItem value="request">Single Requests</SelectItem>
+                      <SelectItem value="multi">Multi-Department</SelectItem>
+                      <SelectItem value="project">Projects</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {filteredHistoryItems.length > 0 ? (
+                  <div className="space-y-4">
+                    {filteredHistoryItems.map((item, index) => (
+                      <div key={index} className="border border-jd-bg rounded-lg p-4 opacity-70">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium">{item.title}</h4>
+                              <span className={`inline-flex items-center px-2 py-1 rounded text-xs
+                                ${item.type === "project" ? "bg-blue-500/20 text-blue-500" : 
+                                  item.multiDepartment ? "bg-purple-500/20 text-purple-500" : 
+                                  "bg-green-500/20 text-green-500"}`}>
+                                {item.type === "project" ? "Project" : 
+                                  item.multiDepartment ? "Multi-Dept" : 
+                                  "Request"}
+                              </span>
+                              <span className={`inline-flex items-center px-2 py-1 rounded text-xs
+                                ${item.status === "Completed" ? "bg-green-500/20 text-green-500" : 
+                                  "bg-gray-500/20 text-gray-500"}`}>
+                                {item.status}
+                              </span>
                             </div>
-                            
-                            {item.acceptedBy.length < 2 && (
-                              <p className="text-xs text-amber-600 mt-1">
-                                Waiting for more users to join before changing to In Process
-                              </p>
-                            )}
+                            <p className="text-sm text-jd-purple">{item.department}</p>
+                            <p className="text-sm text-jd-mutedText mt-1">
+                              {item.description?.slice(0, 100)}{item.description?.length > 100 ? '...' : ''}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {item.lastStatusUpdateTime && (
+                          <div className="mt-2 flex items-center gap-1 text-xs text-jd-mutedText">
+                            <Clock size={12} />
+                            <span>
+                              Last updated: {item.lastStatusUpdateTime}
+                            </span>
                           </div>
                         )}
                       </div>
-                    </div>
-                    
-                    {item.lastStatusUpdateTime && (
-                      <div className="mt-2 flex items-center gap-1 text-xs text-jd-mutedText">
-                        <Clock size={12} />
-                        <span>
-                          Last updated: {item.lastStatusUpdateTime}
-                        </span>
-                      </div>
-                    )}
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  <div className="text-center py-12 bg-jd-bg rounded-lg">
+                    <p className="text-jd-mutedText">
+                      No historical items found.
+                    </p>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="text-center py-12 bg-jd-bg rounded-lg">
-                <p className="text-jd-mutedText">
-                  You haven't created any requests yet.
-                </p>
-              </div>
-            )}
-          </div>
-        </TabsContent>
-        
-        {/* Accepted Items Tab */}
-        <TabsContent value="accepted">
-          <AcceptedItems 
-            acceptedItems={acceptedItems} 
-            handleMarkCompleted={handleMarkCompleted} 
-            handleAbandon={handleAbandon} 
-            hasMarkedCompleted={hasMarkedCompleted}
-            user={user}
-          />
-          <RejectionModal 
-            isOpen={rejectionModalOpen}
-            setIsOpen={setRejectionModalOpen}
-            itemType={selectedItemType}
-            onConfirm={handleAbandon}
-            itemId={selectedItemId || ""}
-          />
-        </TabsContent>
-        
-        {/* History Tab */}
-        <TabsContent value="history">
-          <div className="bg-jd-card rounded-lg p-6">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h3 className="text-xl font-medium">History</h3>
-                <p className="text-jd-mutedText">
-                  Previously completed and rejected items
-                </p>
-              </div>
-              
-              {historyItems.length > 0 && (
-                <Select value={historyTypeFilter} onValueChange={setHistoryTypeFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <div className="flex items-center gap-2">
-                      <Filter size={16} />
-                      <SelectValue placeholder="Filter by type" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Items</SelectItem>
-                    <SelectItem value="request">Single Requests</SelectItem>
-                    <SelectItem value="multi">Multi-Department</SelectItem>
-                    <SelectItem value="project">Projects</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
+            </TabsContent>
             
-            {filteredHistoryItems.length > 0 ? (
-              <div className="space-y-4">
-                {filteredHistoryItems.map((item, index) => (
-                  <div key={index} className="border border-jd-bg rounded-lg p-4 opacity-70">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-medium">{item.title}</h4>
-                          <span className={`inline-flex items-center px-2 py-1 rounded text-xs
-                            ${item.type === "project" ? "bg-blue-500/20 text-blue-500" : 
-                              item.multiDepartment ? "bg-purple-500/20 text-purple-500" : 
-                              "bg-green-500/20 text-green-500"}`}>
-                            {item.type === "project" ? "Project" : 
-                              item.multiDepartment ? "Multi-Dept" : 
-                              "Request"}
-                          </span>
-                          <span className={`inline-flex items-center px-2 py-1 rounded text-xs
-                            ${item.status === "Completed" ? "bg-green-500/20 text-green-500" : 
-                              "bg-gray-500/20 text-gray-500"}`}>
-                            {item.status}
-                          </span>
+            {/* Rejection Notes Tab */}
+            <TabsContent value="rejections">
+              <div className="bg-jd-card rounded-lg p-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                  <div>
+                    <h3 className="text-xl font-medium">Rejection Notes</h3>
+                    <p className="text-jd-mutedText">
+                      Notes from users who rejected your requests
+                    </p>
+                  </div>
+                  
+                  {rejectionNotes.length > 0 && (
+                    <Button 
+                      variant="outline" 
+                      className="text-jd-red hover:bg-jd-red/10"
+                      onClick={handleClearAllRejectionNotes}
+                    >
+                      Clear All Notes
+                    </Button>
+                  )}
+                </div>
+                
+                {rejectionNotes.length > 0 ? (
+                  <div className="space-y-4">
+                    {rejectionNotes.map((note, index) => (
+                      <div key={index} className="border border-jd-bg rounded-lg p-4">
+                        <div className="flex justify-between">
+                          <h4 className="font-medium">{note.requestTitle}</h4>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleRemoveRejectionNote(note.id)}
+                          >
+                            <X size={16} />
+                          </Button>
                         </div>
-                        <p className="text-sm text-jd-purple">{item.department}</p>
-                        <p className="text-sm text-jd-mutedText mt-1">
-                          {item.description?.slice(0, 100)}{item.description?.length > 100 ? '...' : ''}
+                        <p className="text-sm text-jd-purple">
+                          Rejected by: {note.rejectedBy}
+                        </p>
+                        <p className="text-sm text-jd-mutedText mt-2">
+                          {note.reason || "No reason provided"}
+                        </p>
+                        <p className="text-xs text-jd-mutedText mt-2">
+                          {new Date(note.timestamp).toLocaleString()}
                         </p>
                       </div>
-                    </div>
-                    
-                    {item.lastStatusUpdateTime && (
-                      <div className="mt-2 flex items-center gap-1 text-xs text-jd-mutedText">
-                        <Clock size={12} />
-                        <span>
-                          Last updated: {item.lastStatusUpdateTime}
-                        </span>
-                      </div>
-                    )}
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12 bg-jd-bg rounded-lg">
-                <p className="text-jd-mutedText">
-                  No historical items found.
-                </p>
-              </div>
-            )}
-          </div>
-        </TabsContent>
-        
-        {/* Rejection Notes Tab */}
-        <TabsContent value="rejections">
-          <div className="bg-jd-card rounded-lg p-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-              <div>
-                <h3 className="text-xl font-medium">Rejection Notes</h3>
-                <p className="text-jd-mutedText">
-                  Notes from users who rejected your requests
-                </p>
-              </div>
-              
-              {rejectionNotes.length > 0 && (
-                <Button 
-                  variant="outline" 
-                  className="text-jd-red hover:bg-jd-red/10"
-                  onClick={handleClearAllRejectionNotes}
-                >
-                  Clear All Notes
-                </Button>
-              )}
-            </div>
-            
-            {rejectionNotes.length > 0 ? (
-              <div className="space-y-4">
-                {rejectionNotes.map((note, index) => (
-                  <div key={index} className="border border-jd-bg rounded-lg p-4">
-                    <div className="flex justify-between">
-                      <h4 className="font-medium">{note.requestTitle}</h4>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => handleRemoveRejectionNote(note.id)}
-                      >
-                        <X size={16} />
-                      </Button>
-                    </div>
-                    <p className="text-sm text-jd-purple">
-                      Rejected by: {note.rejectedBy}
-                    </p>
-                    <p className="text-sm text-jd-mutedText mt-2">
-                      {note.reason || "No reason provided"}
-                    </p>
-                    <p className="text-xs text-jd-mutedText mt-2">
-                      {new Date(note.timestamp).toLocaleString()}
+                ) : (
+                  <div className="text-center py-12 bg-jd-bg rounded-lg">
+                    <p className="text-jd-mutedText">
+                      No rejection notes to display.
                     </p>
                   </div>
-                ))}
+                )}
               </div>
-            ) : (
-              <div className="text-center py-12 bg-jd-bg rounded-lg">
-                <p className="text-jd-mutedText">
-                  No rejection notes to display.
-                </p>
-              </div>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-};
-
-export default Profile;
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
+    );
+  };
+  
+  export default Profile;

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -165,6 +164,63 @@ const Requests = () => {
     if (user.role !== "client") return false;
     
     return canUserAcceptRequest(request, user.username, user.department);
+  };
+  
+  const handleRequestAction = (id: string, action: string, username?: string) => {
+    const requests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
+    const updatedRequests = requests.map((request: any) => {
+      if (request.id === id) {
+        let updatedRequest = { ...request };
+
+        switch (action) {
+          case "accept":
+            if (!updatedRequest.acceptedBy) {
+              updatedRequest.acceptedBy = [];
+            }
+            if (Array.isArray(updatedRequest.acceptedBy) && !updatedRequest.acceptedBy.includes(username)) {
+              updatedRequest.acceptedBy = [...updatedRequest.acceptedBy, username];
+              updatedRequest.usersAccepted = updatedRequest.acceptedBy.length;
+              
+              // Check if we have enough users to move to "In Process"
+              if (updatedRequest.type === "project" || updatedRequest.multiDepartment) {
+                // Only change to "In Process" if we have enough users
+                if (updatedRequest.usersAccepted >= (updatedRequest.usersNeeded || 2)) {
+                  updatedRequest.status = "In Process";
+                } else {
+                  updatedRequest.status = "Pending";
+                }
+              } else {
+                updatedRequest.status = "In Process";
+              }
+            }
+            break;
+            
+          case "reject":
+          case "abandon":
+            if (updatedRequest.type === "project" || updatedRequest.multiDepartment) {
+              // Remove user from acceptedBy
+              updatedRequest.acceptedBy = updatedRequest.acceptedBy.filter((u: string) => u !== username);
+              updatedRequest.usersAccepted = updatedRequest.acceptedBy.length;
+              
+              // Always return to "Pending" status when a user leaves
+              updatedRequest.status = "Pending";
+            } else {
+              // For single department requests, just set to rejected
+              updatedRequest.status = "Rejected";
+            }
+            break;
+            
+          default:
+            break;
+        }
+        
+        return updatedRequest;
+      }
+      return request;
+    });
+
+    localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+    setAllRequests(updatedRequests);
   };
   
   const handleStatusChange = (id: string, status: string) => {

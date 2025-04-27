@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -55,7 +54,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
   };
 
   const handleDepartmentChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, department: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
     setFormError(""); // Clear any error when department is selected
   };
 
@@ -153,13 +152,17 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         departmentList = [formData.department];
       }
       
+      // Always start with "Pending" status for projects and multi-department requests
+      // They will only move to "In Process" when they have enough participants
+      const initialStatus = (formData.type === "project" || multiDepartmentRequest) ? "Pending" : "Pending";
+      
       // Create the new request/project
       const newItem = {
         id: `#${Math.floor(100000 + Math.random() * 900000)}`,
         title: formData.title,
-        department: departmentList[0] || user?.department || "General",  // Primary department
-        departments: departmentList,  // All departments as an array
-        status: "Pending",
+        department: departmentList[0] || user?.department || "General",
+        departments: departmentList,
+        status: initialStatus,
         dateCreated: now.toLocaleDateString("en-GB"),
         creator: user?.username || "user",
         creatorDepartment: user?.department || "Unknown Department",
@@ -168,24 +171,24 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         createdAt: now.toISOString(),
         creatorRole: user?.role || "client",
         isExpired: false,
-        // For projects and multi-dept requests, auto-add creator
         acceptedBy: formData.type === "project" ? [user?.username || "user"] : [],
         usersAccepted: formData.type === "project" ? 1 : 0,
         completedBy: [],
         multiDepartment: formData.type === "project" || multiDepartmentRequest,
+        usersNeeded: formData.type === "project" 
+          ? parseInt(formData.usersNeeded) + 1 // Add 1 to include creator
+          : multiDepartmentRequest 
+            ? departmentList.length 
+            : 1,
         ...(formData.type === "project" && {
           priority: formData.priority,
           archived: false,
-          usersNeeded: parseInt(formData.usersNeeded) + 1, // Add 1 to include creator
-        }),
-        ...(formData.type === "request" && multiDepartmentRequest && {
-          usersNeeded: departmentList.length,
         }),
         ...(formData.relatedProject && formData.relatedProject !== "none" && {
           relatedProject: formData.relatedProject,
         }),
       };
-      
+
       // Add the new item to the array
       const updatedRequests = [newItem, ...existingRequests];
       
