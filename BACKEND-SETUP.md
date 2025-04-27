@@ -162,6 +162,38 @@ app.post('/api/users/login', (req, res) => {
   );
 });
 
+// ADD THIS NEW ENDPOINT FOR USER REGISTRATION
+app.post('/api/users/register', (req, res) => {
+  const { username, fullName, email, department, role, phone, password } = req.body;
+  
+  // Generate a unique ID
+  const id = `user_${Date.now()}`;
+  
+  db.run(
+    `INSERT INTO users (id, username, fullName, email, department, role, phone, password) 
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, 
+    [id, username, fullName, email, department, role, phone, password],
+    function(err) {
+      if (err) {
+        if (err.message.includes('UNIQUE constraint failed')) {
+          return res.status(409).json({ error: 'Username already exists' });
+        }
+        return res.status(500).json({ error: err.message });
+      }
+      
+      res.status(201).json({
+        id,
+        username,
+        fullName,
+        email,
+        department,
+        role,
+        phone
+      });
+    }
+  );
+});
+
 // Requests
 app.get('/api/requests', (req, res) => {
   db.all('SELECT * FROM requests', [], (err, rows) => {
@@ -892,232 +924,231 @@ app.listen(port, () => {
 });
 ```
 
-2. **Create a migration script** at `scripts/migrate_to_sqlite.js`:
+2. **Create a new file** at `src/api/apiConfig.js` to connect the frontend to the backend:
 
 ```javascript
-const fs = require('fs');
-const path = require('path');
-const fetch = require('node-fetch');
+// src/api/apiConfig.js
+// Configure your API endpoints here
 
-// Function to migrate localStorage data to SQLite
-async function migrateToSQLite() {
+const API_URL = 'http://localhost:3000/api';
+
+export default API_URL;
+```
+
+3. **Create a new file** at `src/api/localStorageToAPI.js` to bridge the localStorage operations in your frontend:
+
+```javascript
+// src/api/localStorageToAPI.js
+import API_URL from './apiConfig';
+
+// This function synchronizes localStorage operations with the backend API
+export const syncDataWithBackend = async () => {
   try {
-    console.log('Starting migration from localStorage to SQLite...');
+    // 1. Get the data from localStorage
+    const requests = JSON.parse(localStorage.getItem('jd-requests') || '[]');
+    const users = JSON.parse(localStorage.getItem('jd-users') || '[]');
+    const departments = JSON.parse(localStorage.getItem('jd-departments') || '[]');
+
+    // 2. Send data to backend
+    if (departments.length > 0) {
+      await fetch(`${API_URL}/import/departments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(departments)
+      });
+    }
+
+    if (users.length > 0) {
+      await fetch(`${API_URL}/import/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(users)
+      });
+    }
+
+    if (requests.length > 0) {
+      await fetch(`${API_URL}/migrate/localstorage`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requests)
+      });
+    }
+
+    console.log('Data synchronized with backend successfully');
+    return true;
+  } catch (error) {
+    console.error('Error synchronizing data with backend:', error);
+    return false;
+  }
+};
+
+// Monkey patch localStorage methods to sync with API
+const originalSetItem = localStorage.setItem;
+localStorage.setItem = function(key, value) {
+  // Call original implementation first
+  originalSetItem.call(this, key, value);
+  
+  // If it's our app data, sync with backend
+  if (key === 'jd-requests' || key === 'jd-users' || key === 'jd-departments') {
+    const data = JSON.parse(value);
     
-    // Read localStorage data from a JSON file (you'll need to export this first)
-    const localStorageFile = path.join(__dirname, '../data/localStorage_export.json');
-    
-    if (!fs.existsSync(localStorageFile)) {
-      console.error('localStorage export file not found. Please run the export script first.');
-      process.exit(1);
+    // Determine the API endpoint based on the key
+    let endpoint;
+    switch (key) {
+      case 'jd-requests':
+        endpoint = '/migrate/localstorage';
+        break;
+      case 'jd-users':
+        endpoint = '/import/users';
+        break;
+      case 'jd-departments':
+        endpoint = '/import/departments';
+        break;
+      default:
+        return;
     }
     
-    const localStorageData = JSON.parse(fs.readFileSync(localStorageFile, 'utf8'));
-    const requests = localStorageData['jd-requests'] || [];
-    
-    if (!requests.length) {
-      console.log('No requests found in localStorage export.');
-      return;
-    }
-    
-    console.log(`Found ${requests.length} requests to migrate.`);
-    
-    // Send data to backend migration endpoint
-    const response = await fetch('http://localhost:3000/api/migrate/localstorage', {
+    // Send data to backend
+    fetch(`${API_URL}${endpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(requests)
-    });
-    
-    const result = await response.json();
-    
-    if (response.ok) {
-      console.log('Migration successful:', result.message);
-      console.log(`Migrated ${result.count} requests to SQLite database.`);
-    } else {
-      console.error('Migration failed:', result.error);
-    }
-  } catch (error) {
-    console.error('Migration error:', error);
+      body: value
+    })
+    .then(response => response.json())
+    .then(result => console.log(`Data synchronized with backend (${key}):`, result))
+    .catch(error => console.error(`Error syncing ${key} with backend:`, error));
   }
-}
+};
 
-migrateToSQLite();
-```
-
-### Connecting Frontend to Backend
-
-To connect your frontend React application to the SQLite backend, update the API utility:
-
-```javascript
-// No changes needed to src/api/index.ts - it's already set up to connect to the backend
-// Just make sure the backend server is running on http://localhost:3000
-```
-
-### Data Migration From LocalStorage to SQLite
-
-1. **Create Export Script** at `scripts/export_localStorage.js`:
-
-```javascript
-const fs = require('fs');
-const path = require('path');
-const prompt = require('prompt-sync')({ sigint: true });
-
-// Function to export localStorage data
-function exportLocalStorage() {
-  try {
-    console.log('This script will help you export localStorage data from your browser to a JSON file.');
-    console.log('\nInstructions:');
-    console.log('1. Open your browser and navigate to your application');
-    console.log('2. Open Developer Tools (F12 or right-click -> Inspect)');
-    console.log('3. Go to the Console tab');
-    console.log('4. Run this command: copy(JSON.stringify(localStorage))');
-    console.log('5. Paste the copied data below:');
-    
-    const data = prompt('\nPaste localStorage data: ');
-    
-    try {
-      const parsedData = JSON.parse(data);
-      
-      // Create data directory if it doesn't exist
-      const dataDir = path.join(__dirname, '../data');
-      if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir, { recursive: true });
+// Initialize and sync data with backend on app load
+export const initBackendSync = () => {
+  // Check if database has been initialized
+  fetch(`${API_URL}/departments`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.length === 0) {
+        console.log('Database appears empty, attempting to sync from localStorage');
+        syncDataWithBackend();
+      } else {
+        console.log('Database already contains data', data);
       }
-      
-      // Save to file
-      const outputFile = path.join(dataDir, 'localStorage_export.json');
-      fs.writeFileSync(outputFile, JSON.stringify(parsedData, null, 2));
-      
-      console.log(`\nData successfully exported to: ${outputFile}`);
-      console.log('You can now run the migration script to import this data into SQLite.');
-    } catch (parseError) {
-      console.error('Error parsing localStorage data:', parseError.message);
-      console.log('Make sure you copied the data correctly.');
-    }
-  } catch (error) {
-    console.error('Error exporting data:', error);
-  }
-}
+    })
+    .catch(err => {
+      console.error('Cannot connect to backend:', err);
+    });
+};
 
-exportLocalStorage();
+export default syncDataWithBackend;
 ```
 
-### Project Requirements and Workflow
+## How to Connect Your Frontend to the Backend
 
-The request and project lifecycle information from the original document remains unchanged:
+1. **Modify your main application file** (e.g., src/main.tsx) to initialize the backend sync:
 
-#### Request Types
-1. **Single Department Requests**
-   - Expiration: 30 days
-   - Status Notes: 
-     - If rejected or expired, users should submit a new request to restart.
-     - When rejected, status changes back to "Pending" from "In Process"
-     - When rejected, rejection reason is stored and sent to creator
-     - Rejection notes are displayed in the user's profile and can be cleared individually or all at once
-     - When rejecting a single request, users are prompted to provide an optional reason for the rejection
+```javascript
+// Add these lines at the top of your main.tsx or index.tsx file
+import { initBackendSync } from './api/localStorageToAPI';
 
-2. **Multi-Department Requests**
-   - Expiration: 45 days
-   - Status Notes: 
-     - If rejected or expired, users should submit a new request to restart.
-     - When any participant rejects, the status changes back to "Pending" and that user is removed from participants
-     - When rejected, rejection reason is stored and sent to creator
-     - Request stays in "Pending" until at least 2 users accept
-     - If user count drops below 2, request returns to "Pending" status
-     - Rejection notes are displayed in the user's profile and can be cleared individually or all at once
-
-3. **Projects**
-   - Initial Period: 60 days
-   - Archival Period: 7 additional days after initial period
-   - Status Notes: 
-     - If rejected or expired, users should submit a new request to restart or contact the admin for further queries.
-     - Projects can be rejected by participants at any time
-     - When any participant rejects a project, they are removed from the participant list and status changes back to "Pending"
-     - Projects follow the same participant logic as multi-department requests
-     - Project stays in "Pending" until at least 2 users accept
-     - If user count drops below 2, project returns to "Pending" status
-     - When a user joins a project, status remains "Pending" until the minimum required users (2+) have accepted
-     - Rejection reasons are stored and sent to creator
-     - Rejection notes are displayed in the user's profile and can be cleared individually or all at once
+// Initialize backend synchronization
+initBackendSync();
+```
 
 ## How to Run the Backend
 
-1. **Install dependencies**:
+1. **Install dependencies** (if you haven't already):
    ```bash
-   npm install express cors body-parser sqlite3 prompt-sync node-fetch
+   npm install express cors body-parser sqlite3
    ```
 
-2. **Initialize the database**:
+2. **Start the backend server**:
    ```bash
-   mkdir -p ./data
    node server/index.js
    ```
 
-3. **Export localStorage data** (if migrating from existing app):
+3. **In a separate terminal, start your frontend**:
    ```bash
-   node scripts/export_localStorage.js
-   ```
-
-4. **Migrate data to SQLite** (after exporting):
-   ```bash
-   node scripts/migrate_to_sqlite.js
-   ```
-
-5. **Run in development mode**:
-   ```bash
-   # Terminal 1 - Backend server
-   node server/index.js
-   
-   # Terminal 2 - Frontend development server
    npm run dev
    ```
 
-6. **Run in production mode**:
-   ```bash
-   # Build frontend
-   npm run build
+## Troubleshooting Common Issues
+
+### If data is not appearing in the database:
+
+1. **Check server logs** in the terminal where you started the backend server for any error messages.
+
+2. **Verify database connection** by checking if the server logs show "Connected to SQLite database at...".
+
+3. **Inspect network requests** in the browser's developer tools (F12) to ensure that the frontend is actually sending requests to the backend.
+
+4. **Check CORS settings** if you see errors related to cross-origin requests.
+
+5. **Verify file paths** in the server/index.js configuration to ensure the database file is being created in the expected location.
+
+### Database access:
+
+Use DB Browser for SQLite to open the database file at `./data/jd-requests.db`. Make sure you close the database connection in DB Browser before running your application, as SQLite files can be locked for writing by only one process at a time.
+
+### Manual data seeding:
+
+If you need to manually add some initial data to get started, you can use the following API endpoints from a tool like Postman:
+
+1. Add departments:
+   ```
+   POST http://localhost:3000/api/import/departments
+   Content-Type: application/json
    
-   # Run backend (will serve frontend from dist folder)
-   NODE_ENV=production node server/index.js
+   [
+     {
+       "id": "dept1",
+       "name": "Engineering",
+       "icon": "💻",
+       "color": "#3498db"
+     },
+     {
+       "id": "dept2",
+       "name": "Marketing",
+       "icon": "📈",
+       "color": "#2ecc71"
+     }
+   ]
    ```
 
-## Database Structure
+2. Add users:
+   ```
+   POST http://localhost:3000/api/import/users
+   Content-Type: application/json
+   
+   [
+     {
+       "id": "user1",
+       "username": "johndoe",
+       "fullName": "John Doe",
+       "email": "john@example.com",
+       "department": "Engineering",
+       "role": "admin",
+       "phone": "555-1234",
+       "password": "password123"
+     }
+   ]
+   ```
 
-### Request/Project Storage
-- SQLite database is stored in the project's data directory at `./data/jd-requests.db`
-- Access using any SQLite client like DB Browser for SQLite or SQLiteStudio
-- Main tables include:
-  - requests: Stores all request and project information
-  - rejections: Stores rejection reasons and metadata
-  - users: Stores user information and roles
-  - departments: Stores department information
-  - participants_completed: Tracks which users have marked requests as completed
+3. Manually check the data in the database using DB Browser for SQLite.
 
-### Local Database Access
+## Verifying Your Setup
 
-#### SQLite Database Location
-The SQLite database file is located at `./data/jd-requests.db` in the project root directory.
+After following these steps, you should be able to:
 
-#### How to View the Database
-1. Download and install a SQLite browser like "DB Browser for SQLite" (https://sqlitebrowser.org/)
-2. Open the application and select "Open Database"
-3. Navigate to your project directory and select the `./data/jd-requests.db` file
-4. You can now browse tables, run queries, and examine the data structure
+1. Add new departments through the UI and see them appear in the database
+2. Register new users and see them appear in the database
+3. Create new requests/projects and see them appear in the database
+4. Perform actions like accepting/rejecting requests and see the changes reflected in the database
 
-#### Alternative Using SQLite CLI
-1. Install SQLite command-line tool if not already installed
-2. Open a terminal in your project directory
-3. Run `sqlite3 ./data/jd-requests.db`
-4. Use SQLite commands like `.tables` to see available tables, and SQL queries to examine data
-
-## Import Sample Data
-
-To import the sample Excel data, use the provided Python script:
-
-```bash
-pip install openpyxl
-python scripts/import_excel_data.py public/sample-data.xlsx
-```
+The key improvement is that we've added automatic synchronization between localStorage and the SQLite database, and also added support for a new user registration endpoint.
