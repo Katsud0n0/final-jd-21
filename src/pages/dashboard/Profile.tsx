@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -500,119 +501,121 @@ const Profile = () => {
                       <SelectItem value="project">Projects</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-                
-                {filteredHistoryItems.length > 0 ? (
-                  <div className="space-y-4">
-                    {filteredHistoryItems.map((item, index) => (
-                      <div key={index} className="border border-jd-bg rounded-lg p-4 opacity-70">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h4 className="font-medium">{item.title}</h4>
-                              <span className={`inline-flex items-center px-2 py-1 rounded text-xs
-                                ${item.type === "project" ? "bg-blue-500/20 text-blue-500" : 
-                                  item.multiDepartment ? "bg-purple-500/20 text-purple-500" : 
-                                  "bg-green-500/20 text-green-500"}`}>
-                                {item.type === "project" ? "Project" : 
-                                  item.multiDepartment ? "Multi-Dept" : 
-                                  "Request"}
-                              </span>
-                              <span className={`inline-flex items-center px-2 py-1 rounded text-xs
-                                ${item.status === "Completed" ? "bg-green-500/20 text-green-500" : 
-                                  "bg-gray-500/20 text-gray-500"}`}>
-                                {item.status}
-                              </span>
-                            </div>
-                            <p className="text-sm text-jd-purple">{item.department}</p>
-                            <p className="text-sm text-jd-mutedText mt-1">
-                              {item.description?.slice(0, 100)}{item.description?.length > 100 ? '...' : ''}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        {item.lastStatusUpdateTime && (
-                          <div className="mt-2 flex items-center gap-1 text-xs text-jd-mutedText">
-                            <Clock size={12} />
-                            <span>
-                              Last updated: {item.lastStatusUpdateTime}
+                )}
+              </div>
+              
+              {filteredHistoryItems.length > 0 ? (
+                <div className="space-y-4">
+                  {filteredHistoryItems.map((item, index) => (
+                    <div key={index} className="border border-jd-bg rounded-lg p-4 opacity-70">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-medium">{item.title}</h4>
+                            <span className={`inline-flex items-center px-2 py-1 rounded text-xs
+                              ${item.type === "project" ? "bg-blue-500/20 text-blue-500" : 
+                                item.multiDepartment ? "bg-purple-500/20 text-purple-500" : 
+                                "bg-green-500/20 text-green-500"}`}>
+                              {item.type === "project" ? "Project" : 
+                                item.multiDepartment ? "Multi-Dept" : 
+                                "Request"}
+                            </span>
+                            <span className={`inline-flex items-center px-2 py-1 rounded text-xs
+                              ${item.status === "Completed" ? "bg-green-500/20 text-green-500" : 
+                                "bg-gray-500/20 text-gray-500"}`}>
+                              {item.status}
                             </span>
                           </div>
-                        )}
+                          <p className="text-sm text-jd-purple">{item.department}</p>
+                          <p className="text-sm text-jd-mutedText mt-1">
+                            {item.description?.slice(0, 100)}{item.description?.length > 100 ? '...' : ''}
+                          </p>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12 bg-jd-bg rounded-lg">
-                    <p className="text-jd-mutedText">
-                      No historical items found.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-            
-            {/* Rejection Notes Tab */}
-            <TabsContent value="rejections">
-              <div className="bg-jd-card rounded-lg p-6">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                  <div>
-                    <h3 className="text-xl font-medium">Rejection Notes</h3>
-                    <p className="text-jd-mutedText">
-                      Notes from users who rejected your requests
-                    </p>
-                  </div>
-                  
-                  {rejectionNotes.length > 0 && (
-                    <Button 
-                      variant="outline" 
-                      className="text-jd-red hover:bg-jd-red/10"
-                      onClick={handleClearAllRejectionNotes}
-                    >
-                      Clear All Notes
-                    </Button>
-                  )}
+                      
+                      {item.lastStatusUpdateTime && (
+                        <div className="mt-2 flex items-center gap-1 text-xs text-jd-mutedText">
+                          <Clock size={12} />
+                          <span>
+                            Last updated: {item.lastStatusUpdateTime}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 bg-jd-bg rounded-lg">
+                  <p className="text-jd-mutedText">
+                    No historical items found.
+                  </p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+          
+          {/* Rejection Notes Tab */}
+          <TabsContent value="rejections">
+            <div className="bg-jd-card rounded-lg p-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div>
+                  <h3 className="text-xl font-medium">Rejection Notes</h3>
+                  <p className="text-jd-mutedText">
+                    Notes from users who rejected your requests
+                  </p>
                 </div>
                 
-                {rejectionNotes.length > 0 ? (
-                  <div className="space-y-4">
-                    {rejectionNotes.map((note, index) => (
-                      <div key={index} className="border border-jd-bg rounded-lg p-4">
-                        <div className="flex justify-between">
-                          <h4 className="font-medium">{note.requestTitle}</h4>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => handleRemoveRejectionNote(note.id)}
-                          >
-                            <X size={16} />
-                          </Button>
-                        </div>
-                        <p className="text-sm text-jd-purple">
-                          Rejected by: {note.rejectedBy}
-                        </p>
-                        <p className="text-sm text-jd-mutedText mt-2">
-                          {note.reason || "No reason provided"}
-                        </p>
-                        <p className="text-xs text-jd-mutedText mt-2">
-                          {new Date(note.timestamp).toLocaleString()}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12 bg-jd-bg rounded-lg">
-                    <p className="text-jd-mutedText">
-                      No rejection notes to display.
-                    </p>
-                  </div>
+                {rejectionNotes.length > 0 && (
+                  <Button 
+                    variant="outline" 
+                    className="text-jd-red hover:bg-jd-red/10"
+                    onClick={handleClearAllRejectionNotes}
+                  >
+                    Clear All Notes
+                  </Button>
                 )}
               </div>
-            </TabsContent>
-          </Tabs>
-        </div>
+              
+              {rejectionNotes.length > 0 ? (
+                <div className="space-y-4">
+                  {rejectionNotes.map((note, index) => (
+                    <div key={index} className="border border-jd-bg rounded-lg p-4">
+                      <div className="flex justify-between">
+                        <h4 className="font-medium">{note.requestTitle}</h4>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleRemoveRejectionNote(note.id)}
+                        >
+                          <X size={16} />
+                        </Button>
+                      </div>
+                      <p className="text-sm text-jd-purple">
+                        Rejected by: {note.rejectedBy}
+                      </p>
+                      <p className="text-sm text-jd-mutedText mt-2">
+                        {note.reason || "No reason provided"}
+                      </p>
+                      <p className="text-xs text-jd-mutedText mt-2">
+                        {new Date(note.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 bg-jd-bg rounded-lg">
+                  <p className="text-jd-mutedText">
+                    No rejection notes to display.
+                  </p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
-    );
-  };
+    </div>
+  );
+};
   
-  export default Profile;
+export default Profile;
+
