@@ -178,19 +178,41 @@ export const useRequests = () => {
   };
 
   const handleAcceptProject = (request: Request) => {
-    if (!request.multiDepartment && request.type !== "project") {
-      const currentAcceptedBy = Array.isArray(request.acceptedBy) ? request.acceptedBy : [];
-      if (currentAcceptedBy.length > 0) {
-        toast({
-          title: "Request already accepted",
-          description: "This request has already been accepted by another user.",
-          variant: "destructive"
-        });
-        return;
-      }
-    }
+    if (!user) return;
     
-    initHandleAcceptProject(request);
+    const updatedRequests = requests.map(r => {
+      if (r.id === request.id) {
+        const currentAcceptedBy = Array.isArray(r.acceptedBy) ? [...r.acceptedBy] : [];
+        
+        if (!currentAcceptedBy.includes(user.username)) {
+          const updatedAcceptedBy = [...currentAcceptedBy, user.username];
+          const updatedUsersAccepted = (r.usersAccepted || 0) + 1;
+          
+          // Only change status to "In Process" when all required users have accepted
+          const newStatus = updatedUsersAccepted >= r.usersNeeded ? "In Process" : "Pending";
+          
+          return {
+            ...r,
+            acceptedBy: updatedAcceptedBy,
+            usersAccepted: updatedUsersAccepted,
+            status: newStatus,
+            ...(newStatus === "In Process" && {
+              lastStatusUpdate: new Date().toISOString(),
+              lastStatusUpdateTime: new Date().toLocaleTimeString()
+            })
+          };
+        }
+      }
+      return r;
+    });
+    
+    setRequests(updatedRequests);
+    localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+    
+    toast({
+      title: "Request Accepted",
+      description: `You have accepted the ${request.type}. The status will change to In Process once all required users have accepted.`,
+    });
   };
 
   const confirmAcceptProject = () => {

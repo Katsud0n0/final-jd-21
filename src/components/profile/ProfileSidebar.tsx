@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { UserProfile } from "@/types/profileTypes";
 import { LogOut } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 interface ProfileSidebarProps {
   user: UserProfile | null;
@@ -76,17 +77,16 @@ const ProfileSidebar = ({ user, logout }: ProfileSidebarProps) => {
         </Button>
       </div>
       
-      <div className="mt-6 p-4 bg-red-500/10 rounded-lg border border-red-200">
-        <h3 className="text-red-600 font-medium mb-2">Account Actions</h3>
-        <Button 
-          variant="destructive" 
-          className="w-full bg-red-600 hover:bg-red-700 flex items-center justify-center gap-2"
-          onClick={logout}
-        >
-          <LogOut size={16} />
-          Logout
-        </Button>
-      </div>
+      <Separator className="my-6" />
+      
+      <Button 
+        variant="destructive" 
+        className="w-full flex items-center justify-center gap-2"
+        onClick={logout}
+      >
+        <LogOut className="h-4 w-4" />
+        Logout
+      </Button>
     </div>
   );
 };

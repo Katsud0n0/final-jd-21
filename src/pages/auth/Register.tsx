@@ -53,9 +53,9 @@ const Register = () => {
     
     if (!formData.department) {
       toast({
-        title: "Department required",
+        title: "Department Required",
         description: "Please select your department before registering.",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -73,6 +73,11 @@ const Register = () => {
       navigate("/home");
     } catch (error) {
       console.error("Registration error:", error);
+      toast({
+        title: "Registration Failed",
+        description: "An error occurred during registration. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -118,14 +123,14 @@ const Register = () => {
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="department">Department</Label>
+          <Label htmlFor="department">Department<span className="text-red-500">*</span></Label>
           <Select
             value={formData.department}
             onValueChange={handleDepartmentChange}
             required
           >
             <SelectTrigger className="bg-jd-bg border-jd-card/60">
-              <SelectValue placeholder="Select department" />
+              <SelectValue placeholder="Select your department" />
             </SelectTrigger>
             <SelectContent>
               {departments.map((dept) => (
