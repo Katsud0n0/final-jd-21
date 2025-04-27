@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { UserProfile } from "@/types/profileTypes";
@@ -26,6 +27,15 @@ const ProfileSidebar = ({ user, logout }: ProfileSidebarProps) => {
         </div>
         <h2 className="mt-4 text-2xl font-medium">{user?.fullName}</h2>
         <p className="text-jd-mutedText">@{user?.username}</p>
+        
+        <Button 
+          variant="ghost" 
+          className="mt-4 text-jd-red hover:text-jd-red/90 hover:bg-jd-red/10 flex items-center gap-2"
+          onClick={logout}
+        >
+          <LogOut className="h-4 w-4" />
+          Logout
+        </Button>
       </div>
       
       <div className="space-y-4">
@@ -76,17 +86,6 @@ const ProfileSidebar = ({ user, logout }: ProfileSidebarProps) => {
           Settings
         </Button>
       </div>
-      
-      <Separator className="my-6" />
-      
-      <Button 
-        variant="destructive" 
-        className="w-full flex items-center justify-center gap-2"
-        onClick={logout}
-      >
-        <LogOut className="h-4 w-4" />
-        Logout
-      </Button>
     </div>
   );
 };
