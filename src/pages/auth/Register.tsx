@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { departments } from "@/data/departments";
-import { toast } from "react-toastify";
+import { toast } from "@/components/ui/use-toast";
 
 const Register = () => {
   const { register } = useAuth();
