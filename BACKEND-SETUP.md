@@ -61,23 +61,6 @@
    - Location: `public/sample-data.xlsx`
    - Use this as a template for your data structure
 
-## API Endpoints
-
-### Departments
-- GET `/api/departments` - Get all departments
-- POST `/api/departments` - Create new department
-
-### Users
-- GET `/api/users` - Get all users
-- POST `/api/users/login` - User login
-- POST `/api/users/register` - User registration
-
-### Requests
-- GET `/api/requests` - Get all requests
-- POST `/api/requests` - Create new request
-- PUT `/api/requests/:id` - Update request
-- DELETE `/api/requests/:id` - Delete request
-
 ## Excel File Structure
 
 ### departments.xlsx
@@ -108,6 +91,8 @@
 - type (Text)
 - multiDepartment (Boolean)
 - usersNeeded (Number)
+- archived (Boolean)
+- archivedAt (Date)
 
 ## Running the Project
 
@@ -155,4 +140,3 @@
    - Keep Excel files in a secure location
    - Implement proper access controls
    - Regular backup of data files
-

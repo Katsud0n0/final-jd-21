@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +11,7 @@ import RejectionModal from "@/components/profile/RejectionModal";
 import { Request } from "@/types/profileTypes";
 import AcceptedItems from "@/components/profile/AcceptedItems";
 import { LogOut } from "lucide-react";
+import ArchivedItems from "@/components/profile/ArchivedItems";
 
 // Create RejectionModal component if it doesn't exist already
 const Profile = () => {
@@ -19,6 +19,7 @@ const Profile = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [createdRequests, setCreatedRequests] = useState<Request[]>([]);
+  const [archivedItems, setArchivedItems] = useState<Request[]>([]);
   const [acceptedItems, setAcceptedItems] = useState<Request[]>([]);
   const [historyItems, setHistoryItems] = useState<Request[]>([]);
   const [rejectionNotes, setRejectionNotes] = useState<any[]>([]);
@@ -28,16 +29,21 @@ const Profile = () => {
   const [selectedItemType, setSelectedItemType] = useState<'request' | 'project' | 'multi-department'>('request');
   
   useEffect(() => {
-    // Load data from localStorage
     const fetchData = () => {
       try {
         setLoading(true);
-        
-        // Get all requests
         const allRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
         
-        // Filter for current user
         if (user) {
+          // Filter requests based on user role
+          if (user.role === 'admin') {
+            // For admin: show archived items
+            const adminArchivedItems = allRequests.filter((req: Request) => 
+              req.archived === true
+            );
+            setArchivedItems(adminArchivedItems);
+          }
+          
           // Requests created by user
           const userCreatedRequests = allRequests.filter((req: Request) => 
             req.creator === user.username && !req.archived
@@ -78,6 +84,36 @@ const Profile = () => {
     
     fetchData();
   }, [user]);
+
+  const handleUnarchive = (id: string) => {
+    try {
+      const allRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
+      
+      const updatedRequests = allRequests.map((req: Request) => {
+        if (req.id === id) {
+          return { ...req, archived: false };
+        }
+        return req;
+      });
+      
+      localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+      
+      // Update local state
+      setArchivedItems(archivedItems.filter(item => item.id !== id));
+      
+      toast({
+        title: "Item restored",
+        description: "The item has been restored and is now visible in the main view.",
+      });
+    } catch (error) {
+      console.error("Error unarchiving item:", error);
+      toast({
+        title: "Error",
+        description: "Could not restore the item.",
+        variant: "destructive",
+      });
+    }
+  };
   
   // Mark item as completed
   const handleMarkCompleted = (id: string) => {
@@ -358,9 +394,15 @@ const Profile = () => {
             <TabsTrigger value="created">
               Created Requests {createdRequests.length > 0 && `(${createdRequests.length})`}
             </TabsTrigger>
-            <TabsTrigger value="accepted">
-              Accepted Items {acceptedItems.length > 0 && `(${acceptedItems.length})`}
-            </TabsTrigger>
+            {user?.role === 'admin' ? (
+              <TabsTrigger value="archived">
+                Archived Items {archivedItems.length > 0 && `(${archivedItems.length})`}
+              </TabsTrigger>
+            ) : (
+              <TabsTrigger value="accepted">
+                Accepted Items {acceptedItems.length > 0 && `(${acceptedItems.length})`}
+              </TabsTrigger>
+            )}
             <TabsTrigger value="history">
               History {historyItems.length > 0 && `(${historyItems.length})`}
             </TabsTrigger>
@@ -457,23 +499,26 @@ const Profile = () => {
             </div>
           </TabsContent>
           
-          {/* Accepted Items Tab */}
-          <TabsContent value="accepted">
-            <AcceptedItems 
-              acceptedItems={acceptedItems} 
-              handleMarkCompleted={handleMarkCompleted} 
-              handleAbandon={handleAbandon} 
-              hasMarkedCompleted={hasMarkedCompleted}
-              user={user}
-            />
-            <RejectionModal 
-              isOpen={rejectionModalOpen}
-              setIsOpen={setRejectionModalOpen}
-              itemType={selectedItemType}
-              onConfirm={handleAbandon}
-              itemId={selectedItemId || ""}
-            />
-          </TabsContent>
+          {user?.role === 'admin' ? (
+            <TabsContent value="archived">
+              <ArchivedItems 
+                archivedItems={archivedItems}
+                handleUnarchive={handleUnarchive}
+                handleDelete={() => {}}
+                user={user}
+              />
+            </TabsContent>
+          ) : (
+            <TabsContent value="accepted">
+              <AcceptedItems 
+                acceptedItems={acceptedItems}
+                handleMarkCompleted={handleMarkCompleted}
+                handleAbandon={handleAbandon}
+                hasMarkedCompleted={hasMarkedCompleted}
+                user={user}
+              />
+            </TabsContent>
+          )}
           
           {/* History Tab */}
           <TabsContent value="history">
@@ -618,4 +663,3 @@ const Profile = () => {
 };
   
 export default Profile;
-
