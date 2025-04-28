@@ -29,6 +29,7 @@ const Profile = () => {
       try {
         // Fetch requests via API
         let requests = await api.getUserRequests(user.username);
+        console.log("User requests loaded:", requests);
         
         // Prepare filtered sets
         const accepted = requests.filter(req => 
@@ -47,6 +48,8 @@ const Profile = () => {
           req.status === "Rejected" || 
           req.creator === user.username
         );
+        
+        console.log("Archived items:", archived.length);
         
         setUserRequests(requests);
         setAcceptedItems(accepted);
@@ -69,25 +72,40 @@ const Profile = () => {
   
   const handleUnarchive = async (id: string) => {
     try {
-      // Update via API
-      await api.updateRequest(id, { archived: false, archivedAt: null });
+      // Try to use the dedicated unarchive API endpoint
+      await api.unarchiveRequest(id);
       
       // Update local state
       const updatedArchivedItems = archivedItems.filter(item => item.id !== id);
       setArchivedItems(updatedArchivedItems);
       
-      // Show toast
+      // Refresh user data
+      if (user) {
+        const requests = await api.getUserRequests(user.username);
+        setUserRequests(requests);
+        
+        // Update filtered sets
+        const accepted = requests.filter(req => 
+          !req.archived && 
+          req.status === "In Process" && 
+          Array.isArray(req.acceptedBy) && 
+          req.acceptedBy.includes(user.username)
+        );
+          
+        const history = requests.filter(req => 
+          req.status === "Completed" || 
+          req.status === "Rejected" || 
+          req.creator === user.username
+        );
+        
+        setAcceptedItems(accepted);
+        setHistoryItems(history);
+      }
+      
       toast({
         title: "Item Restored",
         description: "The item has been successfully restored"
       });
-      
-      // Refresh user data
-      if (user) {
-        api.getUserRequests(user.username).then(requests => {
-          setUserRequests(requests);
-        });
-      }
     } catch (error) {
       console.error("Error unarchiving:", error);
       toast({
@@ -107,7 +125,10 @@ const Profile = () => {
       const updatedArchivedItems = archivedItems.filter(item => item.id !== id);
       setArchivedItems(updatedArchivedItems);
       
-      // Show toast
+      // Also update the full requests list
+      const updatedRequests = userRequests.filter(item => item.id !== id);
+      setUserRequests(updatedRequests);
+      
       toast({
         title: "Item Deleted",
         description: "The item has been permanently deleted"

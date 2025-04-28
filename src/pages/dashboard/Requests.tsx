@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -243,31 +244,31 @@ const Requests = () => {
   
   const handleArchive = async (id: string) => {
     try {
-      // Update request via API
-      await api.updateRequest(id, { archived: true, archivedAt: new Date().toISOString() });
-      
-      // Update local state
-      const updatedRequests = allRequests.map((request) => {
-        if (request.id === id) {
-          return {
-            ...request,
-            archived: true,
-            archivedAt: new Date().toISOString()
-          };
+      // First try archiving via API endpoint
+      const response = await fetch(`http://localhost:3000/api/requests/${id}/archive`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
         }
-        return request;
       });
       
-      // Update state - remove archived projects for non-admin users
-      const filteredUpdatedRequests = user?.role === 'admin'
-        ? updatedRequests
-        : updatedRequests.filter(req => !req.archived);
+      if (!response.ok) {
+        // If the specific archive endpoint fails, fall back to update request
+        await api.updateRequest(id, { 
+          archived: true, 
+          archivedAt: new Date().toISOString()
+        });
+      }
       
-      setAllRequests(filteredUpdatedRequests);
+      // Update local state
+      const updatedRequests = allRequests.filter(request => request.id !== id);
+      
+      setAllRequests(updatedRequests);
+      setFilteredRequests(updatedRequests);
       
       toast({
         title: "Project Archived",
-        description: "The project has been archived successfully",
+        description: "The project has been archived successfully and moved to your profile's archived section.",
       });
     } catch (error) {
       console.error("Error archiving project:", error);

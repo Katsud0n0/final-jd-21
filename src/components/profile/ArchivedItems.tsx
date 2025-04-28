@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Archive, Clock, X } from 'lucide-react';
+import { Archive } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Request } from '@/types/profileTypes';
 import api from '@/api';
@@ -18,9 +17,25 @@ const ArchivedItems = ({ archivedItems, handleUnarchive, handleDelete, user }: A
   
   const unarchive = async (id: string) => {
     try {
-      // Update via API
-      await api.updateRequest(id, { archived: false, archivedAt: null });
+      // First try unarchiving via API endpoint
+      const response = await fetch(`http://localhost:3000/api/requests/${id}/unarchive`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        // If the specific unarchive endpoint fails, fall back to update request
+        await api.updateRequest(id, { archived: false, archivedAt: null });
+      }
+      
       handleUnarchive(id);
+      
+      toast({
+        title: "Item Restored",
+        description: "The item has been successfully restored"
+      });
     } catch (error) {
       console.error("Error unarchiving:", error);
       toast({
@@ -33,9 +48,13 @@ const ArchivedItems = ({ archivedItems, handleUnarchive, handleDelete, user }: A
   
   const deleteItem = async (id: string) => {
     try {
-      // Delete via API
       await api.deleteRequest(id);
       handleDelete(id);
+      
+      toast({
+        title: "Item Deleted",
+        description: "The item has been permanently deleted"
+      });
     } catch (error) {
       console.error("Error deleting:", error);
       toast({

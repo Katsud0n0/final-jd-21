@@ -61,7 +61,7 @@ const initializeData = async () => {
     const filePath = path.join(excelDir, file);
     if (!fs.existsSync(filePath)) {
       needsInit = true;
-      break;
+      console.log(`File not found: ${filePath}`);
     }
   }
   
@@ -75,6 +75,8 @@ const initializeData = async () => {
     } catch (error) {
       console.error('Failed to initialize sample data:', error);
     }
+  } else {
+    console.log('Excel files already exist. Skipping initialization.');
   }
 };
 
@@ -134,6 +136,7 @@ app.get('/api/requests', async (req, res) => {
     const requests = await dataAccess.getRequests();
     res.json(requests);
   } catch (error) {
+    console.error('Error getting requests:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -143,6 +146,7 @@ app.post('/api/requests', async (req, res) => {
     const newRequest = await dataAccess.createRequest(req.body);
     res.json(newRequest);
   } catch (error) {
+    console.error('Error creating request:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -153,6 +157,7 @@ app.put('/api/requests/:id', async (req, res) => {
     const updatedRequest = await dataAccess.updateRequest(id, req.body);
     res.json(updatedRequest);
   } catch (error) {
+    console.error('Error updating request:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -163,6 +168,7 @@ app.delete('/api/requests/:id', async (req, res) => {
     await dataAccess.deleteRequest(id);
     res.json({ success: true });
   } catch (error) {
+    console.error('Error deleting request:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -216,9 +222,12 @@ app.post('/api/requests/:id/reject', async (req, res) => {
 app.post('/api/requests/:id/archive', async (req, res) => {
   try {
     const { id } = req.params;
+    console.log(`Archiving request ${id}`);
     const updatedRequest = await dataAccess.archiveRequest(id);
+    console.log(`Archive result:`, updatedRequest);
     res.json(updatedRequest);
   } catch (error) {
+    console.error('Error archiving request:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -226,9 +235,12 @@ app.post('/api/requests/:id/archive', async (req, res) => {
 app.post('/api/requests/:id/unarchive', async (req, res) => {
   try {
     const { id } = req.params;
+    console.log(`Unarchiving request ${id}`);
     const updatedRequest = await dataAccess.unarchiveRequest(id);
+    console.log(`Unarchive result:`, updatedRequest);
     res.json(updatedRequest);
   } catch (error) {
+    console.error('Error unarchiving request:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -11,6 +11,41 @@ if (!fs.existsSync(EXCEL_DIR)) {
   fs.mkdirSync(EXCEL_DIR, { recursive: true });
 }
 
+// Check if Excel files exist, if not we need to initialize them
+const requiredFiles = ['departments.xlsx', 'users.xlsx', 'requests.xlsx'];
+let needsInitialization = false;
+
+for (const file of requiredFiles) {
+  const filePath = path.join(EXCEL_DIR, file);
+  if (!fs.existsSync(filePath)) {
+    needsInitialization = true;
+    console.log(`File not found: ${filePath}`);
+  }
+}
+
+if (needsInitialization) {
+  console.log('Excel files not found. Initializing with sample data.');
+  const sampleDataPath = path.join(__dirname, '..', 'public', 'sample-data.xlsx');
+  
+  // Run Python script to initialize data
+  const pythonProcess = spawn('python', [
+    path.join(__dirname, '..', 'scripts', 'import_excel_data.py'), 
+    sampleDataPath
+  ]);
+  
+  pythonProcess.stdout.on('data', (data) => {
+    console.log(`Python stdout: ${data.toString()}`);
+  });
+  
+  pythonProcess.stderr.on('data', (data) => {
+    console.error(`Python stderr: ${data.toString()}`);
+  });
+  
+  pythonProcess.on('close', (code) => {
+    console.log(`Python process exited with code ${code}`);
+  });
+}
+
 // Helper function to run Python scripts for Excel operations
 const runPythonScript = (scriptName, args = []) => {
   return new Promise((resolve, reject) => {

@@ -1,4 +1,3 @@
-
 // API utilities for connecting to the Excel backend
 const API_URL = 'http://localhost:3000/api';
 
@@ -9,6 +8,13 @@ const handleResponse = async (response: Response) => {
     throw new Error(errorData.error || 'API request failed');
   }
   return response.json();
+};
+
+// Helper for creating/checking the default localStorage structure
+const ensureLocalStorageDefaults = () => {
+  if (!localStorage.getItem("jd-requests")) {
+    localStorage.setItem("jd-requests", JSON.stringify([]));
+  }
 };
 
 export const api = {
@@ -71,6 +77,7 @@ export const api = {
       console.error("API getRequests error:", error);
       // Fallback to localStorage if API fails
       console.log("Falling back to localStorage for requests");
+      ensureLocalStorageDefaults();
       const localRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
       return localRequests;
     }
@@ -447,6 +454,44 @@ export const api = {
       console.error("API canUserAcceptRequest error:", error);
       // Simple fallback
       return { canAccept: true };
+    }
+  },
+  
+  // Archive request
+  archiveRequest: async (requestId: string) => {
+    try {
+      console.log(`Archiving request ${requestId}`);
+      const response = await fetch(`${API_URL}/requests/${requestId}/archive`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      return handleResponse(response);
+    } catch (error) {
+      console.error("API archiveRequest error:", error);
+      // Fallback using updateRequest
+      console.log("Falling back to updateRequest for archiving");
+      return api.updateRequest(requestId, { archived: true, archivedAt: new Date().toISOString() });
+    }
+  },
+  
+  // Unarchive request
+  unarchiveRequest: async (requestId: string) => {
+    try {
+      console.log(`Unarchiving request ${requestId}`);
+      const response = await fetch(`${API_URL}/requests/${requestId}/unarchive`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      return handleResponse(response);
+    } catch (error) {
+      console.error("API unarchiveRequest error:", error);
+      // Fallback using updateRequest
+      console.log("Falling back to updateRequest for unarchiving");
+      return api.updateRequest(requestId, { archived: false, archivedAt: null });
     }
   }
 };
