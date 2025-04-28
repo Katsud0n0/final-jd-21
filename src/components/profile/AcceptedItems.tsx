@@ -7,27 +7,59 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import RejectionModal from './RejectionModal';
 
 interface AcceptedItemsProps {
-  acceptedItems: Request[];
-  handleMarkCompleted: (id: string) => void;
-  handleAbandon: (id: string, reason?: string) => void;
-  hasMarkedCompleted: (item: Request) => boolean;
-  user: any;
+  acceptedItems?: Request[];
+  items?: Request[];
+  handleMarkCompleted?: (id: string) => void;
+  handleAbandon?: (id: string, reason?: string) => void;
+  hasMarkedCompleted?: (item: Request) => boolean;
+  user?: any;
+  userData?: any;
+  onStatusChange?: (id: string, status: string) => void | Promise<void>;
 }
 
 const AcceptedItems = ({ 
   acceptedItems, 
+  items,
   handleMarkCompleted, 
   handleAbandon,
   hasMarkedCompleted,
-  user
+  user,
+  userData,
+  onStatusChange
 }: AcceptedItemsProps) => {
   const [rejectionModalOpen, setRejectionModalOpen] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedItemType, setSelectedItemType] = useState<'request' | 'project' | 'multi-department'>('request');
   const [typeFilter, setTypeFilter] = useState<string>("all");
   
+  // Use either acceptedItems or items, with items taking precedence
+  const requestItems = items || acceptedItems || [];
+  const currentUser = userData || user;
+  
+  // Function to handle marking completed
+  const onMarkCompleted = (id: string) => {
+    if (handleMarkCompleted) {
+      handleMarkCompleted(id);
+    } else if (onStatusChange) {
+      onStatusChange(id, "Completed");
+    }
+  };
+  
+  // Function to check if item is marked as completed
+  const checkMarkedCompleted = (item: Request) => {
+    if (hasMarkedCompleted) {
+      return hasMarkedCompleted(item);
+    }
+    
+    // Fallback implementation
+    if (!currentUser) return false;
+    
+    return Array.isArray(item.participantsCompleted) && 
+           item.participantsCompleted.includes(currentUser.username);
+  };
+  
   // Filter accepted items by type
-  const filteredItems = acceptedItems.filter(item => {
+  const filteredItems = requestItems.filter(item => {
     if (typeFilter === "all") return true;
     if (typeFilter === "request" && item.type === "request" && !item.multiDepartment) return true;
     if (typeFilter === "multi" && (item.multiDepartment || (item.type === "request" && item.multiDepartment))) return true;
@@ -42,6 +74,14 @@ const AcceptedItems = ({
     setRejectionModalOpen(true);
   };
 
+  const onReject = (id: string, reason?: string) => {
+    if (handleAbandon) {
+      handleAbandon(id, reason);
+    } else if (onStatusChange) {
+      onStatusChange(id, "Rejected");
+    }
+  };
+
   return (
     <div className="bg-jd-card rounded-lg p-6">
       <div className="flex justify-between items-center mb-6">
@@ -52,7 +92,7 @@ const AcceptedItems = ({
           </p>
         </div>
         
-        {acceptedItems.length > 0 && (
+        {requestItems.length > 0 && (
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="w-[180px]">
               <div className="flex items-center gap-2">
@@ -128,11 +168,11 @@ const AcceptedItems = ({
                     size="sm"
                     variant="outline"
                     className={`border-green-500 text-green-500 hover:bg-green-500/10
-                      ${hasMarkedCompleted(item) ? 'bg-green-500/10' : ''}`}
-                    onClick={() => handleMarkCompleted(item.id)}
-                    disabled={hasMarkedCompleted(item)}
+                      ${checkMarkedCompleted(item) ? 'bg-green-500/10' : ''}`}
+                    onClick={() => onMarkCompleted(item.id)}
+                    disabled={checkMarkedCompleted(item)}
                   >
-                    {hasMarkedCompleted(item) ? (
+                    {checkMarkedCompleted(item) ? (
                       <span className="flex items-center gap-1">
                         <Check size={16} /> Completed
                       </span>
@@ -144,11 +184,11 @@ const AcceptedItems = ({
                     size="sm"
                     variant="outline"
                     className={`border-jd-red text-jd-red hover:bg-jd-red/10 ${
-                      hasMarkedCompleted(item) ? 'opacity-50 cursor-not-allowed' : ''
+                      checkMarkedCompleted(item) ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                     onClick={() => initiateReject(item.id, item.type === "project" ? "project" : 
                                               item.multiDepartment ? "multi" : "request")}
-                    disabled={hasMarkedCompleted(item)} // Disable reject button if item is marked as completed
+                    disabled={checkMarkedCompleted(item)} // Disable reject button if item is marked as completed
                   >
                     Reject
                   </Button>
@@ -179,7 +219,7 @@ const AcceptedItems = ({
         isOpen={rejectionModalOpen}
         setIsOpen={setRejectionModalOpen}
         itemType={selectedItemType}
-        onConfirm={(id, reason) => handleAbandon(id, reason)}
+        onConfirm={(id, reason) => onReject(id, reason)}
         itemId={selectedItemId || ''}
       />
     </div>

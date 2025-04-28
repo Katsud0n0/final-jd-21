@@ -4,13 +4,21 @@ import { useNavigate } from "react-router-dom";
 import { UserProfile } from "@/types/profileTypes";
 import { LogOut } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Dispatch, SetStateAction } from "react";
 
 interface ProfileSidebarProps {
   user: UserProfile | null;
-  logout: () => void;
+  logout?: () => void;
+  activeTab?: string;
+  onTabChange?: Dispatch<SetStateAction<string>>;
+  counts?: {
+    accepted: number;
+    archived: number;
+    history: number;
+  };
 }
 
-const ProfileSidebar = ({ user, logout }: ProfileSidebarProps) => {
+const ProfileSidebar = ({ user, logout, activeTab, onTabChange, counts }: ProfileSidebarProps) => {
   const navigate = useNavigate();
 
   // Format initials for avatar
@@ -28,15 +36,50 @@ const ProfileSidebar = ({ user, logout }: ProfileSidebarProps) => {
         <h2 className="mt-4 text-2xl font-medium">{user?.fullName}</h2>
         <p className="text-jd-mutedText">@{user?.username}</p>
         
-        <Button 
-          variant="ghost" 
-          className="mt-4 text-jd-red hover:text-jd-red/90 hover:bg-jd-red/10 flex items-center gap-2"
-          onClick={logout}
-        >
-          <LogOut className="h-4 w-4" />
-          Logout
-        </Button>
+        {logout && (
+          <Button 
+            variant="ghost" 
+            className="mt-4 text-jd-red hover:text-jd-red/90 hover:bg-jd-red/10 flex items-center gap-2"
+            onClick={logout}
+          >
+            <LogOut className="h-4 w-4" />
+            Logout
+          </Button>
+        )}
       </div>
+      
+      {counts && onTabChange && (
+        <div className="space-y-2 mb-6">
+          <Button 
+            variant={activeTab === "overview" ? "default" : "ghost"}
+            className="w-full justify-start"
+            onClick={() => onTabChange("overview")}
+          >
+            Overview
+          </Button>
+          <Button 
+            variant={activeTab === "accepted" ? "default" : "ghost"}
+            className="w-full justify-start"
+            onClick={() => onTabChange("accepted")}
+          >
+            Accepted Items {counts.accepted > 0 && `(${counts.accepted})`}
+          </Button>
+          <Button 
+            variant={activeTab === "archived" ? "default" : "ghost"}
+            className="w-full justify-start"
+            onClick={() => onTabChange("archived")}
+          >
+            Archived Items {counts.archived > 0 && `(${counts.archived})`}
+          </Button>
+          <Button 
+            variant={activeTab === "history" ? "default" : "ghost"}
+            className="w-full justify-start"
+            onClick={() => onTabChange("history")}
+          >
+            History {counts.history > 0 && `(${counts.history})`}
+          </Button>
+        </div>
+      )}
       
       <div className="space-y-4">
         <div>

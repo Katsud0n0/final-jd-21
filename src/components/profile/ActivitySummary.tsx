@@ -3,19 +3,25 @@ import React from 'react';
 import { Request } from '@/types/profileTypes';
 
 interface ActivitySummaryProps {
-  userRequests: Request[];
+  userRequests?: Request[];
+  requests?: Request[];
+  userData?: any;
+  className?: string;
 }
 
-const ActivitySummary = ({ userRequests }: ActivitySummaryProps) => {
+const ActivitySummary = ({ userRequests, requests, userData, className = "" }: ActivitySummaryProps) => {
+  // Use either userRequests or requests prop
+  const data = userRequests || requests || [];
+  
   // Calculate stats
-  const totalRequests = userRequests.length;
-  const completedRequests = userRequests.filter((r) => r.status === "Completed").length;
-  const pendingRequests = userRequests.filter((r) => r.status === "Pending").length;
-  const inProcessRequests = userRequests.filter((r) => r.status === "In Process").length;
-  const rejectedRequests = userRequests.filter((r) => r.status === "Rejected").length;
+  const totalRequests = data.length;
+  const completedRequests = data.filter((r) => r.status === "Completed").length;
+  const pendingRequests = data.filter((r) => r.status === "Pending").length;
+  const inProcessRequests = data.filter((r) => r.status === "In Process").length;
+  const rejectedRequests = data.filter((r) => r.status === "Rejected").length;
   
   return (
-    <div className="bg-jd-card rounded-lg p-6">
+    <div className={`bg-jd-card rounded-lg p-6 ${className}`}>
       <h3 className="text-xl font-medium mb-6">Activity Summary</h3>
       <p className="text-jd-mutedText mb-4">Overview of your activity on the platform</p>
       

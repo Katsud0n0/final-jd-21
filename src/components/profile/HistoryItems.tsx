@@ -17,13 +17,19 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface HistoryItemsProps {
-  historyItems: Request[];
-  handleClearHistory: () => void;
+  historyItems?: Request[];
+  items?: Request[];
+  handleClearHistory?: () => void;
+  userData?: any;
+  user?: any;
 }
 
-const HistoryItems = ({ historyItems, handleClearHistory }: HistoryItemsProps) => {
+const HistoryItems = ({ historyItems, items, handleClearHistory, userData, user }: HistoryItemsProps) => {
   const [showClearHistoryDialog, setShowClearHistoryDialog] = useState(false);
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  
+  // Use either historyItems or items, with items taking precedence
+  const historyData = items || historyItems || [];
 
   const renderStatusDetails = (item: Request) => {
     if (!item.lastStatusUpdate) return null;
@@ -42,13 +48,20 @@ const HistoryItems = ({ historyItems, handleClearHistory }: HistoryItemsProps) =
   };
 
   // Filter history items by type
-  const filteredItems = historyItems.filter(item => {
+  const filteredItems = historyData.filter(item => {
     if (typeFilter === "all") return true;
     if (typeFilter === "request" && item.type === "request" && !item.multiDepartment) return true;
     if (typeFilter === "multi" && (item.multiDepartment || (item.type === "request" && item.multiDepartment))) return true;
     if (typeFilter === "project" && item.type === "project") return true;
     return false;
   });
+
+  const onClearHistory = () => {
+    if (handleClearHistory) {
+      handleClearHistory();
+      setShowClearHistoryDialog(false);
+    }
+  };
 
   return (
     <div className="bg-jd-card rounded-lg p-6">
@@ -61,7 +74,7 @@ const HistoryItems = ({ historyItems, handleClearHistory }: HistoryItemsProps) =
         </div>
         
         <div className="flex items-center gap-3">
-          {historyItems.length > 0 && (
+          {historyData.length > 0 && (
             <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger className="w-[180px]">
                 <div className="flex items-center gap-2">
@@ -78,7 +91,7 @@ const HistoryItems = ({ historyItems, handleClearHistory }: HistoryItemsProps) =
             </Select>
           )}
           
-          {historyItems.length > 0 && (
+          {historyData.length > 0 && handleClearHistory && (
             <AlertDialog open={showClearHistoryDialog} onOpenChange={setShowClearHistoryDialog}>
               <AlertDialogTrigger asChild>
                 <Button 
@@ -101,7 +114,7 @@ const HistoryItems = ({ historyItems, handleClearHistory }: HistoryItemsProps) =
                   <AlertDialogCancel className="bg-jd-bg hover:bg-jd-bg/80">Cancel</AlertDialogCancel>
                   <AlertDialogAction 
                     className="bg-red-600 hover:bg-red-700"
-                    onClick={handleClearHistory}
+                    onClick={onClearHistory}
                   >
                     Clear History
                   </AlertDialogAction>
@@ -112,7 +125,7 @@ const HistoryItems = ({ historyItems, handleClearHistory }: HistoryItemsProps) =
         </div>
       </div>
       
-      {historyItems.length > 0 ? (
+      {historyData.length > 0 ? (
         <div className="space-y-4">
           {filteredItems.map((item, index) => (
             <div 

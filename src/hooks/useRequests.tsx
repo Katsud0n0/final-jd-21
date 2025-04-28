@@ -6,6 +6,7 @@ import { useRequestFilters } from "./useRequestFilters";
 import { useRequestDialogs } from "./useRequestDialogs";
 import { useRequestPermissions } from "./useRequestPermissions";
 import { useRequestUtils } from "./useRequestUtils";
+import api from "@/api";
 
 export const useRequests = () => {
   const { toast } = useToast();
