@@ -1,14 +1,13 @@
 
 #!/usr/bin/env python3
 """
-Excel to SQLite Import Tool for JD Frameworks
+Excel Data Import Tool
 
-This script imports data from Excel files into a SQLite database for local development setup.
+This script imports data from Excel files for local development setup.
 
 Requirements:
 - Python 3.6+
 - openpyxl
-- sqlite3 (included in standard Python)
 
 Usage:
 python import_excel_data.py <excel_file_path>
@@ -16,121 +15,69 @@ python import_excel_data.py <excel_file_path>
 
 import sys
 import os
-import sqlite3
 import openpyxl
 from datetime import datetime
 
-def create_database():
-    """Create SQLite database and tables for JD Frameworks."""
-    conn = sqlite3.connect('jd_frameworks.db')
-    cursor = conn.cursor()
-
-    # Create departments table
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS departments (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        icon TEXT NOT NULL,
-        color TEXT NOT NULL,
-        description TEXT NOT NULL
-    )
-    ''')
-
-    # Create users table
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS users (
-        id TEXT PRIMARY KEY,
-        username TEXT NOT NULL UNIQUE,
-        full_name TEXT NOT NULL,
-        department TEXT NOT NULL,
-        email TEXT NOT NULL,
-        phone TEXT,
-        role TEXT,
-        password_hash TEXT,
-        created_at TEXT,
-        FOREIGN KEY (department) REFERENCES departments(name)
-    )
-    ''')
-
-    # Create requests table
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS requests (
-        id TEXT PRIMARY KEY,
-        title TEXT NOT NULL,
-        description TEXT NOT NULL,
-        department TEXT NOT NULL,
-        creator TEXT NOT NULL,
-        status TEXT NOT NULL,
-        date_created TEXT NOT NULL,
-        date_updated TEXT,
-        FOREIGN KEY (department) REFERENCES departments(name),
-        FOREIGN KEY (creator) REFERENCES users(username)
-    )
-    ''')
-
-    conn.commit()
-    return conn
-
-def import_departments(conn, wb):
+def import_departments(wb, output_path):
     """Import departments from Excel worksheet."""
     try:
         ws = wb["Departments"]
-        cursor = conn.cursor()
+        output_wb = openpyxl.Workbook()
+        output_ws = output_wb.active
         
-        print("Importing departments...")
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            if not row[0]:  # Skip empty rows
-                continue
-                
-            cursor.execute('''
-            INSERT OR REPLACE INTO departments (id, name, icon, color, description)
-            VALUES (?, ?, ?, ?, ?)
-            ''', (row[0], row[1], row[2], row[3], row[4]))
-            
-        conn.commit()
-        print(f"Successfully imported departments.")
+        # Copy headers
+        for col in range(1, ws.max_column + 1):
+            output_ws.cell(row=1, column=col, value=ws.cell(row=1, column=col).value)
+        
+        # Copy data
+        for row in range(2, ws.max_row + 1):
+            for col in range(1, ws.max_column + 1):
+                output_ws.cell(row=row, column=col, value=ws.cell(row=row, column=col).value)
+        
+        output_wb.save(os.path.join(output_path, 'departments.xlsx'))
+        print("Successfully imported departments.")
     except Exception as e:
         print(f"Error importing departments: {e}")
 
-def import_users(conn, wb):
+def import_users(wb, output_path):
     """Import users from Excel worksheet."""
     try:
         ws = wb["Users"]
-        cursor = conn.cursor()
+        output_wb = openpyxl.Workbook()
+        output_ws = output_wb.active
         
-        print("Importing users...")
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            if not row[0]:  # Skip empty rows
-                continue
-                
-            cursor.execute('''
-            INSERT OR REPLACE INTO users (id, username, full_name, department, email, phone, role, password_hash, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], datetime.now().isoformat()))
-            
-        conn.commit()
-        print(f"Successfully imported users.")
+        # Copy headers
+        for col in range(1, ws.max_column + 1):
+            output_ws.cell(row=1, column=col, value=ws.cell(row=1, column=col).value)
+        
+        # Copy data
+        for row in range(2, ws.max_row + 1):
+            for col in range(1, ws.max_column + 1):
+                output_ws.cell(row=row, column=col, value=ws.cell(row=row, column=col).value)
+        
+        output_wb.save(os.path.join(output_path, 'users.xlsx'))
+        print("Successfully imported users.")
     except Exception as e:
         print(f"Error importing users: {e}")
 
-def import_requests(conn, wb):
+def import_requests(wb, output_path):
     """Import requests from Excel worksheet."""
     try:
         ws = wb["Requests"]
-        cursor = conn.cursor()
+        output_wb = openpyxl.Workbook()
+        output_ws = output_wb.active
         
-        print("Importing requests...")
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            if not row[0]:  # Skip empty rows
-                continue
-                
-            cursor.execute('''
-            INSERT OR REPLACE INTO requests (id, title, description, department, creator, status, date_created, date_updated)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (row[0], row[1], row[2], row[3], row[4], row[5], row[6], datetime.now().isoformat()))
-            
-        conn.commit()
-        print(f"Successfully imported requests.")
+        # Copy headers
+        for col in range(1, ws.max_column + 1):
+            output_ws.cell(row=1, column=col, value=ws.cell(row=1, column=col).value)
+        
+        # Copy data
+        for row in range(2, ws.max_row + 1):
+            for col in range(1, ws.max_column + 1):
+                output_ws.cell(row=row, column=col, value=ws.cell(row=row, column=col).value)
+        
+        output_wb.save(os.path.join(output_path, 'requests.xlsx'))
+        print("Successfully imported requests.")
     except Exception as e:
         print(f"Error importing requests: {e}")
 
@@ -140,33 +87,32 @@ def main():
         sys.exit(1)
 
     excel_file = sys.argv[1]
+    output_path = './data/excel'
     
     if not os.path.exists(excel_file):
         print(f"Error: File {excel_file} does not exist.")
         sys.exit(1)
+
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
 
     try:
         # Load Excel workbook
         print(f"Loading Excel file: {excel_file}")
         wb = openpyxl.load_workbook(excel_file)
         
-        # Create database and tables
-        conn = create_database()
-        
         # Import data
-        import_departments(conn, wb)
-        import_users(conn, wb)
-        import_requests(conn, wb)
+        import_departments(wb, output_path)
+        import_users(wb, output_path)
+        import_requests(wb, output_path)
         
         print("\nImport completed successfully!")
-        print("Database file: jd_frameworks.db")
+        print(f"Data files have been created in: {output_path}")
 
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
-    finally:
-        if 'conn' in locals():
-            conn.close()
 
 if __name__ == "__main__":
     main()
+
