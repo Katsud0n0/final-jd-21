@@ -16,6 +16,7 @@ import { departments } from "@/data/departments";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Check, X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import api from "@/api";
 
 interface RequestFormProps {
   onSuccess?: () => void;
@@ -40,10 +41,20 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
   });
 
   useEffect(() => {
-    // Load existing projects from localStorage
-    const requests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
-    const projects = requests.filter((req: any) => req.type === "project" && !req.archived);
-    setExistingProjects(projects);
+    const loadProjects = async () => {
+      try {
+        const requests = await api.getRequests();
+        const projects = requests.filter((req: any) => req.type === "project" && !req.archived);
+        setExistingProjects(projects);
+      } catch (error) {
+        console.error("Error loading projects:", error);
+        const localRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
+        const projects = localRequests.filter((req: any) => req.type === "project" && !req.archived);
+        setExistingProjects(projects);
+      }
+    };
+    
+    loadProjects();
   }, []);
 
   const handleChange = (
@@ -70,11 +81,9 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
       ...prev, 
       type: value, 
       relatedProject: "",
-      // Reset usersNeeded to 2 if changing to project type
       usersNeeded: value === "project" ? "2" : prev.usersNeeded
     }));
     
-    // Clear selected departments when switching types
     if (value === "request") {
       setSelectedDepartments([]);
       setMultiDepartmentRequest(false);
@@ -113,19 +122,16 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate department selection
     if (formData.type === "request" && !multiDepartmentRequest && !formData.department) {
       setFormError("Please select a department");
       return;
     }
     
-    // For multi-department requests, validate that at least 1 department is selected
     if (formData.type === "request" && multiDepartmentRequest && selectedDepartments.length === 0) {
       setFormError("Please select at least 1 department for your request");
       return;
     }
     
-    // For projects, validate that at least 3 departments are selected
     if (formData.type === "project" && selectedDepartments.length < 3) {
       setFormError("Please select at least 3 departments for your project");
       return;
@@ -135,15 +141,8 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
     setFormError("");
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Get existing requests
-      const existingRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
-      
       const now = new Date();
       
-      // Determine departments based on selection type
       let departmentList: string[] = [];
       
       if (formData.type === "project" || multiDepartmentRequest) {
@@ -152,11 +151,8 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         departmentList = [formData.department];
       }
       
-      // Always start with "Pending" status for projects and multi-department requests
-      // They will only move to "In Process" when they have enough participants
       const initialStatus = (formData.type === "project" || multiDepartmentRequest) ? "Pending" : "Pending";
       
-      // Create the new request/project
       const newItem = {
         id: `#${Math.floor(100000 + Math.random() * 900000)}`,
         title: formData.title,
@@ -173,10 +169,10 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         isExpired: false,
         acceptedBy: formData.type === "project" ? [user?.username || "user"] : [],
         usersAccepted: formData.type === "project" ? 1 : 0,
-        completedBy: [],
+        participantsCompleted: [],
         multiDepartment: formData.type === "project" || multiDepartmentRequest,
         usersNeeded: formData.type === "project" 
-          ? parseInt(formData.usersNeeded) + 1 // Add 1 to include creator
+          ? parseInt(formData.usersNeeded) + 1
           : multiDepartmentRequest 
             ? departmentList.length 
             : 1,
@@ -189,13 +185,8 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         }),
       };
 
-      // Add the new item to the array
-      const updatedRequests = [newItem, ...existingRequests];
-      
-      // Save back to localStorage
-      localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+      await api.createRequest(newItem);
 
-      // Reset form
       setFormData({
         title: "",
         description: "",
@@ -203,12 +194,11 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         type: "request",
         relatedProject: "",
         priority: "medium",
-        usersNeeded: "2", // Reset to default 2 users
+        usersNeeded: "2",
       });
       setSelectedDepartments([]);
       setMultiDepartmentRequest(false);
 
-      // Call the success callback
       if (onSuccess) {
         onSuccess();
       }
@@ -222,6 +212,7 @@ const RequestForm = ({ onSuccess }: RequestFormProps) => {
         }`,
       });
     } catch (error) {
+      console.error("Error creating request:", error);
       toast({
         title: "Submission failed",
         description: "Could not submit your request. Please try again.",

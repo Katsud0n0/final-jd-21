@@ -3,6 +3,8 @@ import React from 'react';
 import { Archive, Clock, X } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Request } from '@/types/profileTypes';
+import api from '@/api';
+import { useToast } from '@/hooks/use-toast';
 
 interface ArchivedItemsProps {
   archivedItems: Request[];
@@ -12,6 +14,38 @@ interface ArchivedItemsProps {
 }
 
 const ArchivedItems = ({ archivedItems, handleUnarchive, handleDelete, user }: ArchivedItemsProps) => {
+  const { toast } = useToast();
+  
+  const unarchive = async (id: string) => {
+    try {
+      // Update via API
+      await api.updateRequest(id, { archived: false, archivedAt: null });
+      handleUnarchive(id);
+    } catch (error) {
+      console.error("Error unarchiving:", error);
+      toast({
+        title: "Error",
+        description: "Failed to unarchive the item",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  const deleteItem = async (id: string) => {
+    try {
+      // Delete via API
+      await api.deleteRequest(id);
+      handleDelete(id);
+    } catch (error) {
+      console.error("Error deleting:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete the item",
+        variant: "destructive"
+      });
+    }
+  };
+  
   return (
     <div className="bg-jd-card rounded-lg p-6">
       <div className="flex justify-between items-center mb-6">
@@ -59,14 +93,14 @@ const ArchivedItems = ({ archivedItems, handleUnarchive, handleDelete, user }: A
                   <Button 
                     size="sm" 
                     variant="outline"
-                    onClick={() => handleUnarchive(item.id)}
+                    onClick={() => unarchive(item.id)}
                   >
                     Restore
                   </Button>
                   <Button 
                     size="sm" 
                     variant="destructive"
-                    onClick={() => handleDelete(item.id)}
+                    onClick={() => deleteItem(item.id)}
                   >
                     Delete
                   </Button>

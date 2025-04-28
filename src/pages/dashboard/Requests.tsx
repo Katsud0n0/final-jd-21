@@ -9,6 +9,7 @@ import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFoo
 import { Trash2 } from "lucide-react";
 import { Request } from "@/types/profileTypes";
 import { handleAcceptRequest, canUserAcceptRequest } from "@/utils/requestHelpers";
+import api from "@/api";
 
 const Requests = () => {
   const { user } = useAuth();
@@ -29,16 +30,16 @@ const Requests = () => {
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   
   useEffect(() => {
-    // Load requests from localStorage
-    const loadRequests = () => {
+    // Load requests from API
+    const loadRequests = async () => {
       try {
         setLoading(true);
-        const storedRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
+        const requests = await api.getRequests();
         
         // Filter out archived projects for non-admin users
         const filteredRequests = user?.role === 'admin'
-          ? storedRequests
-          : storedRequests.filter((req: Request) => !req.archived);
+          ? requests
+          : requests.filter((req: Request) => !req.archived);
           
         setAllRequests(filteredRequests);
         setFilteredRequests(filteredRequests);
@@ -91,24 +92,28 @@ const Requests = () => {
     setFilteredRequests(results);
   }, [allRequests, searchTerm, statusFilter, departmentFilters]);
   
-  const handleRequestSuccess = () => {
+  const handleRequestSuccess = async () => {
     setDialogOpen(false);
     
-    // Reload requests from localStorage
-    const storedRequests = JSON.parse(localStorage.getItem("jd-requests") || "[]");
-    
-    // Filter out archived projects for non-admin users
-    const filteredRequests = user?.role === 'admin'
-      ? storedRequests
-      : storedRequests.filter((req: Request) => !req.archived);
+    try {
+      // Reload requests from API
+      const requests = await api.getRequests();
       
-    setAllRequests(filteredRequests);
-    setFilteredRequests(filteredRequests);
-    
-    toast({
-      title: "Success",
-      description: "Request created successfully",
-    });
+      // Filter out archived projects for non-admin users
+      const filteredRequests = user?.role === 'admin'
+        ? requests
+        : requests.filter((req: Request) => !req.archived);
+        
+      setAllRequests(filteredRequests);
+      setFilteredRequests(filteredRequests);
+      
+      toast({
+        title: "Success",
+        description: "Request created successfully",
+      });
+    } catch (error) {
+      console.error("Error reloading requests after creation:", error);
+    }
   };
   
   const toggleDepartmentFilter = (department: string) => {
@@ -170,8 +175,12 @@ const Requests = () => {
     return canUserAcceptRequest(request, user.username, user.department);
   };
   
-  const handleStatusChange = (id: string, status: string) => {
+  const handleStatusChange = async (id: string, status: string) => {
     try {
+      // Update request via API
+      await api.updateRequest(id, { status });
+      
+      // Update local state
       const updatedRequests = allRequests.map((request) => {
         if (request.id === id) {
           return {
@@ -183,10 +192,6 @@ const Requests = () => {
         return request;
       });
       
-      // Update localStorage
-      localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
-      
-      // Update state
       setAllRequests(updatedRequests);
       
       toast({
@@ -207,16 +212,16 @@ const Requests = () => {
     setItemToDelete(id);
   };
   
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!itemToDelete) return;
     
     try {
+      // Delete request via API
+      await api.deleteRequest(itemToDelete);
+      
+      // Update local state
       const updatedRequests = allRequests.filter((request) => request.id !== itemToDelete);
       
-      // Update localStorage
-      localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
-      
-      // Update state
       setAllRequests(updatedRequests);
       setFilteredRequests(updatedRequests);
       
@@ -236,20 +241,22 @@ const Requests = () => {
     }
   };
   
-  const handleArchive = (id: string) => {
+  const handleArchive = async (id: string) => {
     try {
+      // Update request via API
+      await api.updateRequest(id, { archived: true, archivedAt: new Date().toISOString() });
+      
+      // Update local state
       const updatedRequests = allRequests.map((request) => {
         if (request.id === id) {
           return {
             ...request,
             archived: true,
+            archivedAt: new Date().toISOString()
           };
         }
         return request;
       });
-      
-      // Update localStorage
-      localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
       
       // Update state - remove archived projects for non-admin users
       const filteredUpdatedRequests = user?.role === 'admin'
@@ -272,18 +279,22 @@ const Requests = () => {
     }
   };
   
-  const handleAcceptProject = (request: Request) => {
+  const handleAcceptProject = async (request: Request) => {
     try {
       if (!user) return;
       
-      // Update the request with the new user
-      const updatedRequests = handleAcceptRequest(allRequests, request.id, user.username);
+      // Update the request via API
+      await api.acceptRequest(request.id, user.username);
       
-      // Update localStorage
-      localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
+      // Refresh requests from API
+      const refreshedRequests = await api.getRequests();
       
-      // Update state
-      setAllRequests(updatedRequests);
+      // Filter for non-admin users
+      const filteredRequests = user?.role === 'admin'
+        ? refreshedRequests
+        : refreshedRequests.filter((req: Request) => !req.archived);
+      
+      setAllRequests(filteredRequests);
       
       toast({
         title: request.type === "project" ? "Project Accepted" : "Request Accepted",
@@ -300,25 +311,41 @@ const Requests = () => {
   };
   
   // Function to handle clearing all departmental requests (admin only)
-  const handleClearDepartmentalRequests = () => {
+  const handleClearDepartmentalRequests = async () => {
     if (!user || user.role !== "admin") return;
     
-    // Filter out requests for admin's department
-    const updatedRequests = allRequests.filter((request) => {
-      const isDepartmentRequest = request.department === user.department || 
-        (Array.isArray(request.departments) && request.departments.includes(user.department));
+    try {
+      // Get all requests
+      const allCurrentRequests = await api.getRequests();
       
-      return !isDepartmentRequest;
-    });
-    
-    setAllRequests(updatedRequests);
-    localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
-    setDeleteOpen(false);
-    
-    toast({
-      title: "Requests cleared",
-      description: `All ${user.department} department requests have been cleared`,
-    });
+      // Filter out requests for admin's department
+      for (const request of allCurrentRequests) {
+        const isDepartmentRequest = request.department === user.department || 
+          (Array.isArray(request.departments) && request.departments.includes(user.department));
+        
+        if (isDepartmentRequest) {
+          await api.deleteRequest(request.id);
+        }
+      }
+      
+      // Reload requests
+      const refreshedRequests = await api.getRequests();
+      setAllRequests(refreshedRequests);
+      setFilteredRequests(refreshedRequests);
+      setDeleteOpen(false);
+      
+      toast({
+        title: "Requests cleared",
+        description: `All ${user.department} department requests have been cleared`,
+      });
+    } catch (error) {
+      console.error("Error clearing departmental requests:", error);
+      toast({
+        title: "Error",
+        description: "Failed to clear departmental requests",
+        variant: "destructive",
+      });
+    }
   };
   
   // Render department tags
