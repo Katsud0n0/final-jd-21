@@ -119,6 +119,29 @@ try {
   console.error('❌ Failed to import sample data:', error.message);
 }
 
+// Test Excel file access
+console.log('🧪 Testing Excel file access...');
+try {
+  const testPath = path.join(dataDir, 'requests.xlsx');
+  if (fs.existsSync(testPath)) {
+    console.log(`✅ Excel file exists at ${testPath}`);
+    console.log('✅ Excel file permissions are correct');
+  } else {
+    console.error(`❌ Excel file does not exist at ${testPath}`);
+    console.log('Attempting to create test file...');
+    try {
+      execSync(`python -c "import openpyxl; wb = openpyxl.Workbook(); wb.save('${testPath}')"`, { stdio: 'ignore' });
+      console.log(`✅ Test Excel file created at ${testPath}`);
+      fs.unlinkSync(testPath); // Remove test file
+    } catch (err) {
+      console.error(`❌ Failed to create test Excel file: ${err.message}`);
+      console.log('Please check directory permissions');
+    }
+  }
+} catch (error) {
+  console.error('❌ Error testing Excel file access:', error.message);
+}
+
 console.log('\n');
 console.log('🎉 Setup complete! You can now run the application.');
 console.log('   Start the backend: node server/index.js');

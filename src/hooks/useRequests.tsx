@@ -377,17 +377,27 @@ export const useRequests = () => {
     });
   };
 
-  const handleArchive = (id: string) => {
-    const updatedRequests = requests.map(r => 
-      r.id === id ? { ...r, archived: true, archivedAt: new Date().toISOString() } : r
-    );
-    setRequests(updatedRequests);
-    localStorage.setItem("jd-requests", JSON.stringify(updatedRequests));
-    
-    toast({
-      title: "Project archived",
-      description: "The project has been archived successfully.",
-    });
+  const handleArchive = async (id: string) => {
+    try {
+      // Call API to archive the request
+      await api.updateRequest(id, { archived: true, archivedAt: new Date().toISOString() });
+      
+      // Update local state
+      const updatedRequests = requests.filter(r => r.id !== id);
+      setRequests(updatedRequests);
+      
+      toast({
+        title: "Item archived",
+        description: "The item has been archived and moved to your profile's archived section.",
+      });
+    } catch (error) {
+      console.error("Error archiving item:", error);
+      toast({
+        title: "Error",
+        description: "Failed to archive the item",
+        variant: "destructive",
+      });
+    }
   };
 
   const initiateAbandon = (id: string, type: string = 'request') => {

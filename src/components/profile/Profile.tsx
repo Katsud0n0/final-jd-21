@@ -38,9 +38,9 @@ const Profile = () => {
           req.acceptedBy.includes(user.username)
         );
         
-        const archived = user.role === "admin" 
-          ? requests.filter(req => req.archived)
-          : [];
+        const archived = requests.filter(req => 
+          req.archived === true
+        );
           
         const history = requests.filter(req => 
           req.status === "Completed" || 
@@ -67,35 +67,59 @@ const Profile = () => {
     loadUserData();
   }, [user, toast]);
   
-  const handleUnarchive = (id: string) => {
-    // Update local state
-    const updatedArchivedItems = archivedItems.filter(item => item.id !== id);
-    setArchivedItems(updatedArchivedItems);
-    
-    // Show toast
-    toast({
-      title: "Item Restored",
-      description: "The item has been successfully restored"
-    });
-    
-    // Refresh user data
-    if (user) {
-      api.getUserRequests(user.username).then(requests => {
-        setUserRequests(requests);
+  const handleUnarchive = async (id: string) => {
+    try {
+      // Update via API
+      await api.updateRequest(id, { archived: false, archivedAt: null });
+      
+      // Update local state
+      const updatedArchivedItems = archivedItems.filter(item => item.id !== id);
+      setArchivedItems(updatedArchivedItems);
+      
+      // Show toast
+      toast({
+        title: "Item Restored",
+        description: "The item has been successfully restored"
+      });
+      
+      // Refresh user data
+      if (user) {
+        api.getUserRequests(user.username).then(requests => {
+          setUserRequests(requests);
+        });
+      }
+    } catch (error) {
+      console.error("Error unarchiving:", error);
+      toast({
+        title: "Error",
+        description: "Failed to unarchive the item",
+        variant: "destructive"
       });
     }
   };
   
-  const handleDelete = (id: string) => {
-    // Update local state
-    const updatedArchivedItems = archivedItems.filter(item => item.id !== id);
-    setArchivedItems(updatedArchivedItems);
-    
-    // Show toast
-    toast({
-      title: "Item Deleted",
-      description: "The item has been permanently deleted"
-    });
+  const handleDelete = async (id: string) => {
+    try {
+      // Delete via API
+      await api.deleteRequest(id);
+      
+      // Update local state
+      const updatedArchivedItems = archivedItems.filter(item => item.id !== id);
+      setArchivedItems(updatedArchivedItems);
+      
+      // Show toast
+      toast({
+        title: "Item Deleted",
+        description: "The item has been permanently deleted"
+      });
+    } catch (error) {
+      console.error("Error deleting:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete the item",
+        variant: "destructive"
+      });
+    }
   };
   
   const handleStatusChange = async (id: string, status: string) => {
@@ -150,9 +174,9 @@ const Profile = () => {
         <div className="md:col-span-1">
           <ProfileSidebar 
             activeTab={activeTab}
-            setActiveTab={setActiveTab}
+            onTabChange={setActiveTab}
             user={user}
-            requestCounts={{
+            counts={{
               accepted: acceptedItems.length,
               archived: archivedItems.length,
               history: historyItems.length
@@ -163,17 +187,17 @@ const Profile = () => {
         <div className="md:col-span-3">
           {activeTab === "overview" && (
             <ActivitySummary 
-              user={user} 
-              requestHistory={historyItems} 
+              userData={user} 
+              requests={historyItems} 
               className="mb-6" 
             />
           )}
           
           {activeTab === "accepted" && (
             <AcceptedItems 
-              acceptedItems={acceptedItems} 
-              handleStatusChange={handleStatusChange} 
-              user={user} 
+              items={acceptedItems} 
+              onStatusChange={handleStatusChange} 
+              userData={user} 
             />
           )}
           
@@ -188,8 +212,8 @@ const Profile = () => {
           
           {activeTab === "history" && (
             <HistoryItems 
-              historyItems={historyItems}
-              user={user}
+              items={historyItems}
+              userData={user}
             />
           )}
         </div>

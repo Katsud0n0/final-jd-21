@@ -1,4 +1,3 @@
-
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -207,6 +206,27 @@ app.post('/api/requests/:id/reject', async (req, res) => {
     const { id } = req.params;
     const { username, reason } = req.body;
     const updatedRequest = await dataAccess.rejectRequest(id, username, reason);
+    res.json(updatedRequest);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Archive/unarchive routes
+app.post('/api/requests/:id/archive', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedRequest = await dataAccess.archiveRequest(id);
+    res.json(updatedRequest);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/requests/:id/unarchive', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedRequest = await dataAccess.unarchiveRequest(id);
     res.json(updatedRequest);
   } catch (error) {
     res.status(500).json({ error: error.message });

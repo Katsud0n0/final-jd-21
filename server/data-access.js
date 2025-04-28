@@ -1,9 +1,15 @@
 
 const path = require('path');
 const { spawn } = require('child_process');
+const fs = require('fs');
 
 // Base directory for Excel files
 const EXCEL_DIR = path.join(__dirname, '..', 'data', 'excel');
+
+// Ensure the Excel directory exists
+if (!fs.existsSync(EXCEL_DIR)) {
+  fs.mkdirSync(EXCEL_DIR, { recursive: true });
+}
 
 // Helper function to run Python scripts for Excel operations
 const runPythonScript = (scriptName, args = []) => {
@@ -20,6 +26,7 @@ const runPythonScript = (scriptName, args = []) => {
     
     pythonProcess.stderr.on('data', (data) => {
       errorOutput += data.toString();
+      console.error(`Python error: ${errorOutput}`);
     });
     
     pythonProcess.on('close', (code) => {
@@ -28,9 +35,11 @@ const runPythonScript = (scriptName, args = []) => {
           const result = output.trim() ? JSON.parse(output) : null;
           resolve(result);
         } catch (error) {
+          console.error('Failed to parse Python output:', output);
           reject(new Error(`Failed to parse Python output: ${error.message}`));
         }
       } else {
+        console.error(`Python script exited with code ${code}: ${errorOutput}`);
         reject(new Error(`Python script exited with code ${code}: ${errorOutput}`));
       }
     });
@@ -104,6 +113,16 @@ const canUserAcceptRequest = async (requestId, username, department) => {
   return runPythonScript('excel_operations.py', ['can_user_accept_request', requestId, username, department]);
 };
 
+// Archive request
+const archiveRequest = async (requestId) => {
+  return runPythonScript('excel_operations.py', ['archive_request', requestId]);
+};
+
+// Unarchive request
+const unarchiveRequest = async (requestId) => {
+  return runPythonScript('excel_operations.py', ['unarchive_request', requestId]);
+};
+
 module.exports = {
   getUsers,
   loginUser,
@@ -120,5 +139,7 @@ module.exports = {
   getUserRequests,
   filterRequests,
   checkExpiredRequests,
-  canUserAcceptRequest
+  canUserAcceptRequest,
+  archiveRequest,
+  unarchiveRequest
 };
